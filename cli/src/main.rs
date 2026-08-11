@@ -405,6 +405,22 @@ async fn run() -> Result<ExitCode> {
                 agent_name.clone(),
             )
             .await?;
+            // Install + start the long-lived gateway so this machine becomes a
+            // ready, passive host — agents invited from the app run here with no
+            // further terminal steps. Non-fatal so setup still succeeds elsewhere.
+            match install_bridge_service(&cli.relay, &default_config_path()) {
+                Ok(log) => {
+                    println!("{} {}", "✓".green(), "gateway service started".bold());
+                    println!("  {}", format!("log: {}", log.display()).dimmed());
+                }
+                Err(error) => {
+                    eprintln!(
+                        "{} could not start the gateway service: {error}",
+                        "warning".yellow()
+                    );
+                    eprintln!("  run `reshard service install` to retry.");
+                }
+            }
         }
         Verb::Runtimes { json, refresh } => {
             runtime_setup::runtimes(&client, &cli.relay, *json, *refresh).await?;
