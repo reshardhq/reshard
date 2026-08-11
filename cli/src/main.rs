@@ -42,7 +42,7 @@ struct Cli {
         long,
         global = true,
         env = "RESHARD_RELAY",
-        default_value = "http://127.0.0.1:8787"
+        default_value = "https://api.reshard.dev"
     )]
     relay: String,
 

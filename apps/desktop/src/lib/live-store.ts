@@ -17,7 +17,7 @@ import {
   sessionToken,
 } from "./auth";
 
-const RELAY = import.meta.env.VITE_RELAY ?? "http://127.0.0.1:8787";
+const RELAY = import.meta.env.VITE_RELAY ?? "https://api.reshard.dev";
 
 /** Wire events from the relay — mirrors reshard-core::Event. */
 type WireEvent =

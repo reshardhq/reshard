@@ -119,16 +119,15 @@ async fn discover_one(
                     label: definition.label,
                     binary_path: Some(legacy),
                     version: None,
-                    availability: Availability::ConfigInvalid,
+                    availability: Availability::Ready,
                     auth: AuthStatus::Unknown,
                     adapter: AdapterStatus::Unsupported,
                     capabilities: definition.capabilities,
                     launch: None,
-                    diagnostics: vec![Diagnostic::error(
+                    diagnostics: vec![Diagnostic::warning(
                         "legacy_runtime",
-                        "Only a legacy non-ACP runtime was found; it cannot satisfy the Reshard runtime contract.",
-                    )
-                    .remediation("Install the runtime's ACP executable or adapter.")],
+                        "A legacy non-ACP runtime was found; Reshard bridges it via shell exec rather than ACP.",
+                    )],
                 };
             }
             return RuntimeReport {
@@ -317,25 +316,17 @@ async fn discover_one(
         ));
     }
 
-    let availability = if adapter == AdapterStatus::Missing {
-        Availability::AdapterMissing
-    } else if unsupported
-        || (!capabilities.enforceable_tool_approvals && definition.capability_help_flag.is_some())
-    {
-        Availability::UnsupportedVersion
-    } else if !capabilities.enforceable_tool_approvals {
-        Availability::ConfigInvalid
+    // Detect-if-installed: reaching here means the runtime's binary was found.
+    // Reshard provisions adapters at runtime (Claude's is baked into the reshard
+    // binary, Codex comes via npx, Hermes/others speak ACP natively), so an
+    // installed runtime is usable. The version floor, adapter presence, and the
+    // approval-capability probe are kept as diagnostics above — not gates.
+    let availability = if version.is_none() {
+        Availability::ProbeFailed
     } else {
         match auth {
-            AuthStatus::LoggedIn | AuthStatus::NotApplicable => {
-                if version.is_some() {
-                    Availability::Ready
-                } else {
-                    Availability::ProbeFailed
-                }
-            }
             AuthStatus::LoginRequired => Availability::LoginRequired,
-            AuthStatus::Unknown | AuthStatus::ProbeFailed => Availability::ProbeFailed,
+            _ => Availability::Ready,
         }
     };
 
@@ -733,7 +724,7 @@ esac"#,
             .iter()
             .find(|report| report.id.as_str() == "codex")
             .unwrap();
-        assert_eq!(codex.availability, Availability::AdapterMissing);
+        assert_eq!(codex.availability, Availability::Ready);
 
         let legacy = fixture_directory();
         executable_fixture(&legacy, "hermes", "echo 'hermes 0.9'");
@@ -742,7 +733,7 @@ esac"#,
             .iter()
             .find(|report| report.id.as_str() == "hermes")
             .unwrap();
-        assert_eq!(hermes.availability, Availability::ConfigInvalid);
+        assert_eq!(hermes.availability, Availability::Ready);
         let gemini = reports
             .iter()
             .find(|report| report.id.as_str() == "gemini")
@@ -756,7 +747,7 @@ esac"#,
 
     #[cfg(unix)]
     #[tokio::test]
-    async fn claude_without_permission_prompt_support_is_not_ready_under_ask() {
+    async fn claude_without_permission_prompt_support_is_still_ready() {
         let directory = fixture_directory();
         executable_fixture(
             &directory,
@@ -773,12 +764,11 @@ esac"#,
             .iter()
             .find(|report| report.id.as_str() == "claude")
             .unwrap();
-        assert_eq!(claude.availability, Availability::UnsupportedVersion);
+        // Detect-if-installed: an installed, authenticated Claude is Ready even
+        // when it does not expose the --permission-prompt-tool capability (that
+        // stays a diagnostic + capability flag, not an availability gate).
+        assert_eq!(claude.availability, Availability::Ready);
         assert!(!claude.capabilities.enforceable_tool_approvals);
-        assert!(claude
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "approval_capability_missing"));
         let _ = std::fs::remove_dir_all(directory);
     }
 
@@ -796,7 +786,7 @@ esac"#,
 esac"#,
         );
         executable_fixture(&directory, "claude-code-acp", "exit 0");
-        executable_fixture(&directory, "codex", r#"while :; do :; done"#);
+        executable_fixture(&directory, "codex", "sleep 30");
         executable_fixture(&directory, "codex-acp", "exit 0");
         let started = Instant::now();
         let reports = discover(DiscoveryOptions {
@@ -818,18 +808,15 @@ esac"#,
                 .find(|report| report.id.as_str() == "claude")
                 .unwrap()
         );
-        // Codex is a native-ACP provider with no conformance verification, so
-        // the conformance gate marks it capability-limited (ConfigInvalid)
-        // regardless of the hung probe. The point of this test — one slow
-        // provider neither blocks discovery nor hides Claude's Ready report —
-        // still holds.
+        // The point of this test: one slow provider neither blocks discovery nor
+        // hides Claude's Ready report. The hung Codex times out -> ProbeFailed.
         assert_eq!(
             reports
                 .iter()
                 .find(|report| report.id.as_str() == "codex")
                 .unwrap()
                 .availability,
-            Availability::ConfigInvalid
+            Availability::ProbeFailed
         );
         let _ = std::fs::remove_dir_all(directory);
     }
@@ -859,7 +846,9 @@ exit 0"#,
             !codex.capabilities.enforceable_tool_approvals,
             "unverified native-ACP provider must not keep enforceable approvals: {codex:#?}"
         );
-        assert_eq!(codex.availability, Availability::ConfigInvalid);
+        // Availability is Ready (installed); the unverified approval boundary is
+        // surfaced as a capability flag + diagnostic rather than a hard gate.
+        assert_eq!(codex.availability, Availability::Ready);
         assert!(codex
             .diagnostics
             .iter()
