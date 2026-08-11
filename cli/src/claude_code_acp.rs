@@ -24,7 +24,7 @@ use agent_client_protocol::schema::v1::{
     PromptResponse, SessionId, SessionNotification, SessionUpdate, StopReason, TextContent,
     ToolCall, ToolCallId, ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind,
 };
-use agent_client_protocol::{Agent, Result, Stdio as AcpStdio};
+use agent_client_protocol::{Agent, Stdio as AcpStdio};
 use anyhow::{Context, Result as AnyhowResult};
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -79,8 +79,7 @@ fn save_claude_session(chat: &str, id: &str) {
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+pub async fn run() -> AnyhowResult<()> {
     let sessions: Sessions = Arc::new(Mutex::new(HashMap::new()));
     let for_new = sessions.clone();
     let for_prompt = sessions.clone();
@@ -344,6 +343,7 @@ async fn main() -> Result<()> {
         )
         .connect_to(AcpStdio::new())
         .await
+        .map_err(|e| anyhow::anyhow!("claude-code-acp adapter failed: {e}"))
 }
 
 fn write_permission_mcp_config() -> AnyhowResult<std::path::PathBuf> {

@@ -12,6 +12,7 @@
 
 mod acp;
 mod approval;
+mod claude_code_acp;
 mod permission_mcp;
 mod runtime_setup;
 mod up;
@@ -245,6 +246,10 @@ enum Verb {
     /// Internal stdio MCP permission bridge for the Claude adapter.
     #[command(hide = true)]
     PermissionMcp,
+
+    /// Internal ACP adapter for the Claude Code subscription (spawned over stdio).
+    #[command(hide = true)]
+    ClaudeCodeAcp,
 }
 
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -352,6 +357,10 @@ async fn run() -> Result<ExitCode> {
     let cli = Cli::parse();
     if matches!(&cli.command, Some(Verb::PermissionMcp)) {
         permission_mcp::run().await?;
+        return Ok(ExitCode::SUCCESS);
+    }
+    if matches!(&cli.command, Some(Verb::ClaudeCodeAcp)) {
+        claude_code_acp::run().await?;
         return Ok(ExitCode::SUCCESS);
     }
     let client = authenticated_client()?;
@@ -814,6 +823,7 @@ async fn run() -> Result<ExitCode> {
         }
 
         Verb::PermissionMcp => unreachable!("permission MCP was handled before authentication"),
+        Verb::ClaudeCodeAcp => unreachable!("claude-code-acp adapter handled before authentication"),
     }
 
     Ok(ExitCode::SUCCESS)

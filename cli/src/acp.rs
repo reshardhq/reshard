@@ -57,8 +57,8 @@ pub fn adapter_command(provider: &str) -> Result<String> {
     }
 }
 
-/// The `claude-code-acp` binary reshard ships alongside itself — prefer the one
-/// next to the running `reshard`, else fall back to PATH.
+/// The `claude-code-acp` adapter, baked into this `reshard` binary as a hidden
+/// subcommand — unless a managed sidecar or `RESHARD_CLAUDE_ACP` overrides it.
 fn claude_code_adapter() -> Result<String> {
     // A Claude subscription adapter may be installed by `reshard setup` as a
     // managed sidecar. Keep this override explicit so development checkouts
@@ -101,15 +101,11 @@ fn claude_code_adapter() -> Result<String> {
         }
     }
 
-    let sibling = std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().map(|dir| dir.join("claude-code-acp")))
-        .filter(|path| path.is_file());
-    let command = match sibling {
-        Some(path) => path.display().to_string(),
-        None if on_path("claude-code-acp") => "claude-code-acp".to_string(),
-        None => bail!("the claude-code-acp adapter is missing (not next to reshard or on PATH)"),
-    };
+    // The adapter is baked into this binary as the hidden `claude-code-acp`
+    // subcommand, so a fresh `curl | sh` install ships it with no extra file.
+    let exe = std::env::current_exe()
+        .map_err(|e| anyhow!("cannot locate the running reshard executable: {e}"))?;
+    let command = format!("{} claude-code-acp", exe.display());
     if !on_path("claude") {
         eprintln!(
             "{} the `claude` CLI is not on PATH — the adapter needs it; run `claude login`.",

@@ -2,6 +2,7 @@ use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
+use dialoguer::{theme::ColorfulTheme, Input, MultiSelect};
 use owo_colors::OwoColorize;
 use reshard_runtime::{discover_local, Availability, RuntimeReport};
 use serde::{Deserialize, Serialize};
@@ -365,18 +366,29 @@ fn prompt_runtime_selection(reports: &[RuntimeReport]) -> Result<Vec<String>> {
     if !std::io::stdin().is_terminal() {
         bail!("interactive setup needs a terminal; pass one or more --runtime values");
     }
-    let defaults = reports
+    let items = reports
         .iter()
-        .filter(|report| report.availability == Availability::Ready)
-        .map(|report| report.id.to_string())
-        .collect::<Vec<_>>()
-        .join(",");
-    let value = prompt("Select runtimes (comma-separated)", &defaults)?;
-    Ok(value
-        .split(',')
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string)
+        .map(|report| {
+            format!(
+                "{}  ·  {}",
+                report.label,
+                availability_label(report.availability)
+            )
+        })
+        .collect::<Vec<_>>();
+    // Pre-check the runtimes that are ready to run.
+    let checked = reports
+        .iter()
+        .map(|report| report.availability == Availability::Ready)
+        .collect::<Vec<_>>();
+    let chosen = MultiSelect::with_theme(&ColorfulTheme::default())
+        .with_prompt("Select runtimes  (↑↓ move · space toggle · enter confirm)")
+        .items(&items)
+        .defaults(&checked)
+        .interact()?;
+    Ok(chosen
+        .into_iter()
+        .map(|index| reports[index].id.to_string())
         .collect())
 }
 
@@ -393,12 +405,10 @@ fn prompt(label: &str, default: &str) -> Result<String> {
     if !std::io::stdin().is_terminal() {
         bail!("{label} is required in non-interactive setup");
     }
-    print!("{label} [{default}]: ");
-    std::io::stdout().flush()?;
-    let mut line = String::new();
-    std::io::stdin().read_line(&mut line)?;
-    let value = line.trim();
-    Ok(if value.is_empty() { default } else { value }.to_string())
+    Ok(Input::with_theme(&ColorfulTheme::default())
+        .with_prompt(label)
+        .default(default.to_string())
+        .interact_text()?)
 }
 
 fn validate_project(path: &Path) -> Result<PathBuf> {
