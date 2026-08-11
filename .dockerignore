@@ -1,0 +1,11 @@
+target
+node_modules
+**/node_modules
+.git
+apps
+docs
+*.db
+*.db-shm
+*.db-wal
+.rebeam
+.DS_Store

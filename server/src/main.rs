@@ -73,11 +73,14 @@ async fn main() {
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(DEFAULT_PORT);
-    let listener = tokio::net::TcpListener::bind(("127.0.0.1", port))
+    // Default to loopback (safe for local/self-host behind a proxy); set
+    // RESHARD_HOST=0.0.0.0 in a container so the reverse proxy can reach it.
+    let host = std::env::var("RESHARD_HOST").unwrap_or_else(|_| "127.0.0.1".into());
+    let listener = tokio::net::TcpListener::bind((host.as_str(), port))
         .await
         .expect("bind");
 
-    println!("reshard relay  ·  http://127.0.0.1:{port}  ·  {db}");
+    println!("reshard relay  ·  http://{host}:{port}  ·  {db}");
     axum::serve(listener, app).await.unwrap();
 }
 
