@@ -1,10 +1,8 @@
 {
-  "name": "agentchat",
+  "name": "reshard",
   "private": true,
   "scripts": {
     "desktop": "pnpm --filter desktop tauri dev",
-    "dev": "pnpm --filter desktop dev",
-    "web": "pnpm --filter reshard-web dev",
-    "web:build": "pnpm --filter reshard-web build"
+    "dev": "pnpm --filter desktop dev"
   }
 }
