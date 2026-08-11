@@ -54,6 +54,34 @@ pub struct AgentConfig {
     pub exec: String,
 }
 
+/// An agent binding pulled from the relay — invited from the app and bound to a
+/// machine + project directory. It becomes an ACP agent run in that `cwd`, so
+/// "add an agent" needs no terminal round-trip on the machine.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RelayBinding {
+    name: String,
+    runtime: String,
+    #[serde(default)]
+    cwd: Option<String>,
+}
+
+impl RelayBinding {
+    fn into_config(self) -> AgentConfig {
+        let cwd = self
+            .cwd
+            .as_deref()
+            .filter(|dir| !dir.is_empty())
+            .map(|dir| format!(" --cwd '{}'", dir.replace('\'', "'\\''")))
+            .unwrap_or_default();
+        AgentConfig {
+            exec: format!("reshard acp --provider {} --gateway{}", self.runtime, cwd),
+            provider: Some(self.runtime),
+            name: self.name,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct SessionRecord {
     version: u8,
@@ -173,9 +201,16 @@ pub async fn run(relay: &str, config_path: &Path) -> Result<()> {
                 let Ok(current_members) = response.json::<Vec<Member>>().await else {
                     continue;
                 };
-                let Ok(current_config) = load_agents(config_path) else {
+                let Ok(mut current_config) = load_agents(config_path) else {
                     continue;
                 };
+                // Merge relay-driven bindings (agents invited from the app). Each
+                // runs as an ACP agent in its bound project directory.
+                if let Ok(response) = http.get(format!("{relay}/machines/agents")).send().await {
+                    if let Ok(bindings) = response.json::<Vec<RelayBinding>>().await {
+                        current_config.extend(bindings.into_iter().map(RelayBinding::into_config));
+                    }
+                }
                 let next: Vec<(AgentConfig, Member)> = current_config
                     .into_iter()
                     .filter_map(|cfg| {

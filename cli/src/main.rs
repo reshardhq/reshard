@@ -63,6 +63,8 @@ struct Cli {
 enum Verb {
     /// Guided account, runtime, project, and agent setup
     Setup {
+        /// Pairing code from the Reshard app — binds this machine to your account
+        code: Option<String>,
         /// Runtime ids to enable; repeat for more than one
         #[arg(long = "runtime")]
         runtimes: Vec<String>,
@@ -380,15 +382,20 @@ async fn run() -> Result<ExitCode> {
 
     match command {
         Verb::Setup {
+            code,
             runtimes,
             project,
             agent_name,
         } => {
             if !machine_session_valid(&client, &cli.relay).await? {
-                auth_login(&reqwest::Client::new(), &cli.relay, &hostname()).await?;
+                match code {
+                    Some(code) => pair_machine(&client, &cli.relay, code).await?,
+                    None => bail!(
+                        "this machine isn't paired yet.\n  In the Reshard app, copy your pairing code, then run:\n    reshard setup <code>"
+                    ),
+                }
             }
-            // Rebuild the client after device auth so inventory upload carries
-            // the newly stored machine credential.
+            // Rebuild the client so the inventory upload carries the machine credential.
             let client = authenticated_client()?;
             runtime_setup::setup(
                 &client,
@@ -786,23 +793,11 @@ async fn run() -> Result<ExitCode> {
         }
 
         Verb::Pair { code } => {
-            let res = client
-                .post(format!("{}/pair", cli.relay))
-                .json(&serde_json::json!({ "code": code }))
-                .send()
-                .await?;
-            if !res.status().is_success() {
-                bail!("{}", error_body(res).await);
-            }
-            let token = res
-                .json::<serde_json::Value>()
-                .await?
-                .get("token")
-                .and_then(|v| v.as_str())
-                .context("relay did not return a machine credential")?
-                .to_string();
-            write_machine_token(&token)?;
-            println!("{} machine paired", "✓".green());
+            // Pair, then run the same guided setup — so `pair <code>` and
+            // `setup <code>` are two doors to one flow.
+            pair_machine(&client, &cli.relay, code).await?;
+            let client = authenticated_client()?;
+            runtime_setup::setup(&client, &cli.relay, Vec::new(), None, None).await?;
         }
 
         Verb::Chats => {
@@ -1214,6 +1209,29 @@ fn read_machine_token() -> Result<Option<String>> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error).with_context(|| format!("reading {}", path.display())),
     }
+}
+
+/// Redeem a pairing code (shown in the Reshard app) for a machine credential
+/// and store it. Works on any terminal — your Mac or a VPS.
+async fn pair_machine(client: &reqwest::Client, relay: &str, code: &str) -> Result<()> {
+    let res = client
+        .post(format!("{relay}/pair"))
+        .json(&serde_json::json!({ "code": code.trim() }))
+        .send()
+        .await?;
+    if !res.status().is_success() {
+        bail!("{}", error_body(res).await);
+    }
+    let token = res
+        .json::<serde_json::Value>()
+        .await?
+        .get("token")
+        .and_then(|v| v.as_str())
+        .context("relay did not return a machine credential")?
+        .to_string();
+    write_machine_token(&token)?;
+    println!("{} machine paired", "✓".green());
+    Ok(())
 }
 
 fn write_machine_token(token: &str) -> Result<()> {
