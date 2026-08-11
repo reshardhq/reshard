@@ -1,4 +1,4 @@
-//! The rebeam relay.
+//! The reshard relay.
 //!
 //! Commands come in over HTTP, events go out over one WebSocket. Durable
 //! events are appended to SQLite first; ephemeral ones (agent telemetry) are
@@ -21,7 +21,7 @@ use axum::{
     Json, Router,
 };
 use futures_util::{SinkExt, StreamExt};
-use rebeam_core::{
+use reshard_core::{
     Approval, Command, Event, HistoryGrant, Message, MessageKind, StatusState, Trigger,
 };
 use serde::Deserialize;
@@ -38,15 +38,15 @@ const DEFAULT_PORT: u16 = 8787;
 
 /// Where the log lives. A relative default would make the database depend on
 /// the directory you happened to launch from — two shells, two histories, and
-/// no hint that anything is wrong. `REBEAM_DB` overrides for tests.
+/// no hint that anything is wrong. `RESHARD_DB` overrides for tests.
 fn db_path() -> String {
-    if let Ok(path) = std::env::var("REBEAM_DB") {
+    if let Ok(path) = std::env::var("RESHARD_DB") {
         return path;
     }
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    let dir = format!("{home}/.rebeam");
+    let dir = format!("{home}/.reshard");
     let _ = std::fs::create_dir_all(&dir);
-    format!("{dir}/rebeam.db")
+    format!("{dir}/reshard.db")
 }
 
 #[derive(Clone)]
@@ -77,7 +77,7 @@ async fn main() {
         .await
         .expect("bind");
 
-    println!("rebeam relay  ·  http://127.0.0.1:{port}  ·  {db}");
+    println!("reshard relay  ·  http://127.0.0.1:{port}  ·  {db}");
     axum::serve(listener, app).await.unwrap();
 }
 
@@ -137,7 +137,7 @@ fn cors_layer() -> CorsLayer {
         HeaderValue::from_static("http://tauri.localhost"),
         HeaderValue::from_static("https://tauri.localhost"),
     ];
-    if let Ok(extra) = std::env::var("REBEAM_ALLOWED_ORIGINS") {
+    if let Ok(extra) = std::env::var("RESHARD_ALLOWED_ORIGINS") {
         origins.extend(
             extra
                 .split(',')
@@ -152,7 +152,7 @@ fn cors_layer() -> CorsLayer {
 }
 
 async fn health() -> impl IntoResponse {
-    Json(json!({ "ok": true, "service": "rebeam-relay" }))
+    Json(json!({ "ok": true, "service": "reshard-relay" }))
 }
 
 async fn bootstrap(State(app): State<App>) -> Result<impl IntoResponse, Fail> {
@@ -165,7 +165,7 @@ async fn bootstrap(State(app): State<App>) -> Result<impl IntoResponse, Fail> {
 
 fn bootstrap_enabled() -> bool {
     bootstrap_enabled_for(
-        std::env::var("REBEAM_ALLOW_BOOTSTRAP").ok().as_deref(),
+        std::env::var("RESHARD_ALLOW_BOOTSTRAP").ok().as_deref(),
         cfg!(debug_assertions),
     )
 }
@@ -297,8 +297,8 @@ async fn start_device_auth(
         "userCode": authorization.user_code,
         "expiresAt": authorization.expires_at,
         "intervalSeconds": authorization.interval_seconds,
-        "verificationUri": std::env::var("REBEAM_DEVICE_URL")
-            .unwrap_or_else(|_| "rebeam://device".to_string()),
+        "verificationUri": std::env::var("RESHARD_DEVICE_URL")
+            .unwrap_or_else(|_| "reshard://device".to_string()),
     })))
 }
 
@@ -951,7 +951,7 @@ async fn set_trigger(
         .into_iter()
         .find(|candidate| candidate.id == member)
         .ok_or_else(|| Fail::not_found("no such agent".into()))?;
-    if target.kind != rebeam_core::MemberKind::Agent {
+    if target.kind != reshard_core::MemberKind::Agent {
         return Err(Fail::bad_request("only agents have wake triggers".into()));
     }
     app.store.set_trigger(&chat, &member, body.trigger)?;
@@ -1024,7 +1024,7 @@ async fn reset_session(
         .into_iter()
         .find(|candidate| candidate.id == member)
         .ok_or_else(|| Fail::not_found("no such agent".into()))?;
-    if target.kind != rebeam_core::MemberKind::Agent {
+    if target.kind != reshard_core::MemberKind::Agent {
         return Err(Fail::bad_request("only agent sessions can be reset".into()));
     }
 
@@ -1376,7 +1376,7 @@ fn validate_approval_request(
     tool_call: &str,
     provider: &str,
     tool: &str,
-    display: &rebeam_core::ApprovalDisplay,
+    display: &reshard_core::ApprovalDisplay,
     digest: &str,
     expires_in_ms: i64,
 ) -> Result<(), Fail> {
@@ -2363,14 +2363,14 @@ mod security_tests {
             tool_call_id: "call_1".into(),
             provider: "fake".into(),
             tool: "FakeWrite".into(),
-            display: rebeam_core::ApprovalDisplay {
+            display: reshard_core::ApprovalDisplay {
                 summary: "Write fixture?".into(),
                 project: None,
                 target: Some("fixture.txt".into()),
                 command: None,
             },
             input_digest: "a".repeat(64),
-            state: rebeam_core::ApprovalState::Pending,
+            state: reshard_core::ApprovalState::Pending,
             expires_at: 10,
             created_at: 0,
             resolved_at: None,
@@ -2408,7 +2408,7 @@ mod security_tests {
     #[test]
     fn approval_audit_and_metrics_are_owner_scoped() {
         let store = Store::open(":memory:").unwrap();
-        let display = rebeam_core::ApprovalDisplay {
+        let display = reshard_core::ApprovalDisplay {
             summary: "Run command?".into(),
             project: None,
             target: Some("test.txt".into()),
@@ -2461,7 +2461,7 @@ mod security_tests {
             _ => panic!("expected Created"),
         };
         store
-            .resolve_approval(&a.id, &owner_a, rebeam_core::ApprovalDecision::AllowOnce, &digest)
+            .resolve_approval(&a.id, &owner_a, reshard_core::ApprovalDecision::AllowOnce, &digest)
             .unwrap();
         match store
             .create_approval(

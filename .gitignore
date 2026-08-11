@@ -3,10 +3,10 @@ dist/
 target/
 .DS_Store
 
-# Local Rebeam state and credentials
-.rebeam/
+# Local Reshard state and credentials
+.reshard/
 .hermes/
-rebeam.toml
+reshard.toml
 machine-token
 *.db
 *.db-shm

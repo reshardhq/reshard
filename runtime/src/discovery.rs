@@ -126,7 +126,7 @@ async fn discover_one(
                     launch: None,
                     diagnostics: vec![Diagnostic::error(
                         "legacy_runtime",
-                        "Only a legacy non-ACP runtime was found; it cannot satisfy the Rebeam runtime contract.",
+                        "Only a legacy non-ACP runtime was found; it cannot satisfy the Reshard runtime contract.",
                     )
                     .remediation("Install the runtime's ACP executable or adapter.")],
                 };
@@ -229,7 +229,7 @@ async fn discover_one(
         Ok(status) => status,
         Err(error) => {
             diagnostics.push(Diagnostic::error("auth_probe_failed", error).remediation(
-                "Run the provider's login command, then run `rebeam runtime doctor` again.",
+                "Run the provider's login command, then run `reshard runtime doctor` again.",
             ));
             AuthStatus::ProbeFailed
         }
@@ -260,7 +260,7 @@ async fn discover_one(
                             &output.text,
                         ),
                     )
-                    .remediation("Update the provider CLI before enabling it with Rebeam's Ask policy."),
+                    .remediation("Update the provider CLI before enabling it with Reshard's Ask policy."),
                 );
                 }
                 Err(error) => {
@@ -275,7 +275,7 @@ async fn discover_one(
     // `capability_help_flag`) or has been validated against the ACP conformance
     // contract (`cli/tests/conformance.rs`). A native-ACP provider that claims
     // enforceable approvals without either is downgraded to capability-limited
-    // under the default Ask policy — Rebeam must not trust an unverified adapter
+    // under the default Ask policy — Reshard must not trust an unverified adapter
     // to honor `session/request_permission`.
     if capabilities.enforceable_tool_approvals
         && definition.capability_help_flag.is_none()
@@ -288,7 +288,7 @@ async fn discover_one(
                 "This runtime claims enforceable tool approvals but has not passed the ACP conformance contract.",
             )
             .remediation(
-                "Validate the adapter with the Rebeam conformance suite (cli/tests/conformance.rs) before enabling it under the Ask policy.",
+                "Validate the adapter with the Reshard conformance suite (cli/tests/conformance.rs) before enabling it under the Ask policy.",
             ),
         );
     } else if !capabilities.enforceable_tool_approvals && definition.capability_help_flag.is_none() {
@@ -357,12 +357,12 @@ fn managed_subscription_adapter(runtime_id: &str) -> Option<PathBuf> {
     if runtime_id != "claude" {
         return None;
     }
-    let home = std::env::var_os("REBEAM_HOME").or_else(|| std::env::var_os("HOME"))?;
+    let home = std::env::var_os("RESHARD_HOME").or_else(|| std::env::var_os("HOME"))?;
     let root = PathBuf::from(home);
-    let root = if std::env::var_os("REBEAM_HOME").is_some() {
+    let root = if std::env::var_os("RESHARD_HOME").is_some() {
         root
     } else {
-        root.join(".rebeam")
+        root.join(".reshard")
     };
     let path = root.join("runtimes/claude-subscription/venv/bin/claude-code-acp");
     path.is_file().then_some(path)
@@ -518,7 +518,7 @@ async fn login_shell_path(timeout: Duration) -> Option<std::ffi::OsString> {
         &shell,
         &[
             "-lic".into(),
-            "printf '\\n__REBEAM_PATH__%s' \"$PATH\"".into(),
+            "printf '\\n__RESHARD_PATH__%s' \"$PATH\"".into(),
         ],
         timeout,
     )
@@ -529,7 +529,7 @@ async fn login_shell_path(timeout: Duration) -> Option<std::ffi::OsString> {
 
 #[cfg(unix)]
 fn parse_login_shell_path(output: &str) -> Option<std::ffi::OsString> {
-    let path = output.rsplit_once("__REBEAM_PATH__")?.1.trim();
+    let path = output.rsplit_once("__RESHARD_PATH__")?.1.trim();
     (!path.is_empty()).then(|| std::ffi::OsString::from(path))
 }
 
@@ -608,7 +608,7 @@ fn invalid_custom_report(custom: CustomRuntimeDefinition, error: String) -> Runt
             level: DiagnosticLevel::Error,
             code: "custom_config_invalid".into(),
             message: error,
-            remediation: Some("Fix ~/.rebeam/runtimes.toml and refresh discovery.".into()),
+            remediation: Some("Fix ~/.reshard/runtimes.toml and refresh discovery.".into()),
         }],
     }
 }
@@ -636,7 +636,7 @@ mod tests {
         let directory = fixture_directory();
         executable_fixture(&directory, "claude", "exit 0");
         let shell_output = format!(
-            "shell startup noise\n__REBEAM_PATH__{}:/usr/bin",
+            "shell startup noise\n__RESHARD_PATH__{}:/usr/bin",
             directory.display()
         );
         let recovered = parse_login_shell_path(&shell_output).unwrap();
@@ -652,7 +652,7 @@ mod tests {
     #[cfg(unix)]
     fn fixture_directory() -> PathBuf {
         let path = std::env::temp_dir().join(format!(
-            "rebeam-runtime-fixture-{}",
+            "reshard-runtime-fixture-{}",
             uuid::Uuid::new_v4().simple()
         ));
         std::fs::create_dir_all(&path).unwrap();

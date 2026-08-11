@@ -3,14 +3,14 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-const CREDENTIAL_SERVICE: &str = "app.rebeam.desktop";
+const CREDENTIAL_SERVICE: &str = "app.reshard.desktop";
 const CREDENTIAL_ACCOUNT: &str = "human-session";
 
 fn legacy_credential_path() -> std::path::PathBuf {
     std::env::var_os("HOME")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join(".rebeam")
+        .join(".reshard")
         .join("device-token")
 }
 
@@ -66,8 +66,8 @@ fn delete_auth_session() -> Result<(), String> {
 /// The frontend can request refresh, but cannot supply an executable path.
 /// Custom definitions are read only from the user's local trusted config.
 #[tauri::command]
-async fn discover_runtimes(refresh: bool) -> Result<Vec<rebeam_runtime::RuntimeReport>, String> {
-    rebeam_runtime::discover_local(refresh).await
+async fn discover_runtimes(refresh: bool) -> Result<Vec<reshard_runtime::RuntimeReport>, String> {
+    reshard_runtime::discover_local(refresh).await
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

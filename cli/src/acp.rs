@@ -1,21 +1,21 @@
-//! `rebeam acp` — the Agent Client Protocol bridge.
+//! `reshard acp` — the Agent Client Protocol bridge.
 //!
 //! Any ACP-speaking agent (our `claude-code-acp`, `codex-acp`, Gemini CLI's
 //! `--experimental-acp`) is invoked the same way: we play the *client* role,
 //! spawn the agent as a subprocess over stdio, and translate its session
-//! events into Rebeam's model. Gateway prompts reuse one worker per chat;
+//! events into Reshard's model. Gateway prompts reuse one worker per chat;
 //! terminal probes remain one-shot.
 //!
 //! This is what makes the bridge agent-agnostic. Instead of a bespoke parser
 //! per provider, one ACP client handles them all:
 //!
-//! - `session/update` → streaming text + tool-call telemetry (Rebeam `Status`).
+//! - `session/update` → streaming text + tool-call telemetry (Reshard `Status`).
 //! - `session/request_permission` → a local terminal prompt or an owner-only
-//!   Rebeam approval card. Permission is denied unless one exact invocation is
+//!   Reshard approval card. Permission is denied unless one exact invocation is
 //!   explicitly released.
 //!
-//! Two modes: `Terminal` (the interactive `rebeam acp` probe) and `Gateway`
-//! (driven by `rebeam gateway`: posts tool telemetry to the relay as `Status`
+//! Two modes: `Terminal` (the interactive `reshard acp` probe) and `Gateway`
+//! (driven by `reshard gateway`: posts tool telemetry to the relay as `Status`
 //! and prints the final reply on stdout for the gateway to `Send`).
 
 use std::collections::HashMap;
@@ -34,11 +34,11 @@ use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::{AcpAgent, Agent, ConnectionTo};
 use anyhow::{anyhow, bail, Result};
 use owo_colors::OwoColorize;
-use rebeam_core::{Command as Cmd, StatusState};
+use reshard_core::{Command as Cmd, StatusState};
 use tokio::sync::{mpsc, oneshot, Mutex};
 
 /// Resolve a provider name to the command that launches its ACP adapter, with
-/// no manual adapter install. `rebeam acp --command "<launcher>"` overrides.
+/// no manual adapter install. `reshard acp --command "<launcher>"` overrides.
 pub fn adapter_command(provider: &str) -> Result<String> {
     match provider.trim().to_ascii_lowercase().as_str() {
         // Our own CLI-driven adapter: uses the Claude Code subscription login,
@@ -57,27 +57,27 @@ pub fn adapter_command(provider: &str) -> Result<String> {
     }
 }
 
-/// The `claude-code-acp` binary rebeam ships alongside itself — prefer the one
-/// next to the running `rebeam`, else fall back to PATH.
+/// The `claude-code-acp` binary reshard ships alongside itself — prefer the one
+/// next to the running `reshard`, else fall back to PATH.
 fn claude_code_adapter() -> Result<String> {
-    // A Claude subscription adapter may be installed by `rebeam setup` as a
+    // A Claude subscription adapter may be installed by `reshard setup` as a
     // managed sidecar. Keep this override explicit so development checkouts
     // and packaged desktop builds can point at a pinned adapter bundle.
-    if let Some(configured) = std::env::var_os("REBEAM_CLAUDE_ACP") {
+    if let Some(configured) = std::env::var_os("RESHARD_CLAUDE_ACP") {
         let path = std::path::PathBuf::from(configured);
         if path.is_file() {
             return Ok(path.display().to_string());
         }
         bail!(
-            "REBEAM_CLAUDE_ACP points to a missing adapter: {}",
+            "RESHARD_CLAUDE_ACP points to a missing adapter: {}",
             path.display()
         );
     }
 
     // First prefer the managed subscription sidecar. It is intentionally
-    // separate from the Rebeam binary so the Python runtime can be replaced
+    // separate from the Reshard binary so the Python runtime can be replaced
     // or converted to Rust later without changing the CLI contract.
-    if let Some(home) = std::env::var_os("REBEAM_HOME") {
+    if let Some(home) = std::env::var_os("RESHARD_HOME") {
         let managed = std::path::PathBuf::from(home)
             .join("runtimes")
             .join("claude-subscription")
@@ -90,7 +90,7 @@ fn claude_code_adapter() -> Result<String> {
     }
     if let Some(home) = std::env::var_os("HOME") {
         let managed = std::path::PathBuf::from(home)
-            .join(".rebeam")
+            .join(".reshard")
             .join("runtimes")
             .join("claude-subscription")
             .join("venv")
@@ -108,7 +108,7 @@ fn claude_code_adapter() -> Result<String> {
     let command = match sibling {
         Some(path) => path.display().to_string(),
         None if on_path("claude-code-acp") => "claude-code-acp".to_string(),
-        None => bail!("the claude-code-acp adapter is missing (not next to rebeam or on PATH)"),
+        None => bail!("the claude-code-acp adapter is missing (not next to reshard or on PATH)"),
     };
     if !on_path("claude") {
         eprintln!(
@@ -165,7 +165,7 @@ pub enum Approve {
 
 /// How a session is driven and where its events go.
 pub enum Mode {
-    /// Stream to the terminal (the `rebeam acp` probe).
+    /// Stream to the terminal (the `reshard acp` probe).
     Terminal,
     /// Drive from the gateway: post `Status` per tool call to the relay, and
     /// print the final reply to stdout for the gateway to `Send`.
@@ -287,12 +287,12 @@ pub async fn run(
         } => {
             // The private MCP child inherits these short-lived values from
             // this gateway process. They never go into the MCP config file.
-            std::env::set_var("REBEAM_RELAY", &relay);
-            std::env::set_var("REBEAM_MACHINE_TOKEN", &token);
-            std::env::set_var("REBEAM_APPROVAL_AGENT", &author);
-            std::env::set_var("REBEAM_APPROVAL_CHAT", &chat);
-            std::env::set_var("REBEAM_APPROVAL_PROVIDER", &provider);
-            std::env::set_var("REBEAM_APPROVAL_PROJECT", session_cwd.display().to_string());
+            std::env::set_var("RESHARD_RELAY", &relay);
+            std::env::set_var("RESHARD_MACHINE_TOKEN", &token);
+            std::env::set_var("RESHARD_APPROVAL_AGENT", &author);
+            std::env::set_var("RESHARD_APPROVAL_CHAT", &chat);
+            std::env::set_var("RESHARD_APPROVAL_PROVIDER", &provider);
+            std::env::set_var("RESHARD_APPROVAL_PROJECT", session_cwd.display().to_string());
             let mut headers = reqwest::header::HeaderMap::new();
             let value = format!("Bearer {token}")
                 .parse()

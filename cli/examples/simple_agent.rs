@@ -1,12 +1,12 @@
-//! Minimal ACP *agent* for smoke-testing the `rebeam acp` client.
+//! Minimal ACP *agent* for smoke-testing the `reshard acp` client.
 //!
 //! Copied from the agent-client-protocol SDK examples. It only answers
 //! `initialize`, which is enough to prove our client spawns it, completes the
 //! stdio handshake, and negotiates a protocol version.
 //!
 //! Run the client against it:
-//!   cargo build -p rebeam-cli --examples
-//!   cargo run  -p rebeam-cli -- acp \
+//!   cargo build -p reshard-cli --examples
+//!   cargo run  -p reshard-cli -- acp \
 //!     --command "target/debug/examples/simple_agent" -m "hi"
 
 use agent_client_protocol::schema::v1::{AgentCapabilities, InitializeRequest, InitializeResponse};

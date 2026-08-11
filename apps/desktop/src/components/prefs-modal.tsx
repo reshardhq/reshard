@@ -143,7 +143,7 @@ export function PrefsModal() {
               <div>
                 <p className="text-sm font-medium">Runtimes on this machine</p>
                 <p className="text-xs text-muted-foreground">
-                  The same trusted discovery engine used by the Rebeam CLI.
+                  The same trusted discovery engine used by the Reshard CLI.
                 </p>
               </div>
               <Button
@@ -158,7 +158,7 @@ export function PrefsModal() {
             <div className="mt-3 grid gap-2">
               {localRuntimes.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  Runtime discovery is available in the native Rebeam app.
+                  Runtime discovery is available in the native Reshard app.
                 </p>
               ) : (
                 localRuntimes.map((runtime) => (

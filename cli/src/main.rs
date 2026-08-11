@@ -1,13 +1,13 @@
-//! `rebeam` — the CLI is the protocol.
+//! `reshard` — the CLI is the protocol.
 //!
-//! Every verb here maps to exactly one [`rebeam_core::Command`]. Any agent that
+//! Every verb here maps to exactly one [`reshard_core::Command`]. Any agent that
 //! can run a shell command is integrated; no SDK, no config file, no MCP.
 //!
 //! ```text
-//! rebeam send   -c war-room -m "deploy finished"
-//! rebeam ask    -c war-room -m "Deploy to prod?" --options yes,no
-//! rebeam status -c war-room thinking -m "planning the fix"
-//! rebeam listen -c war-room --json
+//! reshard send   -c war-room -m "deploy finished"
+//! reshard ask    -c war-room -m "Deploy to prod?" --options yes,no
+//! reshard status -c war-room thinking -m "planning the fix"
+//! reshard listen -c war-room --json
 //! ```
 
 mod acp;
@@ -26,7 +26,7 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use futures_util::StreamExt;
 use owo_colors::OwoColorize;
-use rebeam_core::{
+use reshard_core::{
     Chat, Command as Cmd, Event, HistoryGrant, Invite, Member, Membership, Message, StatusState,
 };
 
@@ -34,22 +34,22 @@ use rebeam_core::{
 const EXIT_TIMEOUT: u8 = 124;
 
 #[derive(Parser)]
-#[command(name = "rebeam", version, about = "Talk to your agents from anywhere.")]
+#[command(name = "reshard", version, about = "Talk to your agents from anywhere.")]
 struct Cli {
-    /// Relay URL (env: REBEAM_RELAY)
+    /// Relay URL (env: RESHARD_RELAY)
     #[arg(
         long,
         global = true,
-        env = "REBEAM_RELAY",
+        env = "RESHARD_RELAY",
         default_value = "http://127.0.0.1:8787"
     )]
     relay: String,
 
-    /// Act as this member (env: REBEAM_AS)
+    /// Act as this member (env: RESHARD_AS)
     #[arg(
         long = "as",
         global = true,
-        env = "REBEAM_AS",
+        env = "RESHARD_AS",
         default_value = "claude-main"
     )]
     author: String,
@@ -89,18 +89,18 @@ enum Verb {
         action: RuntimeAction,
     },
 
-    /// Sign this machine in to Rebeam
+    /// Sign this machine in to Reshard
     Auth {
         #[command(subcommand)]
         action: AuthAction,
     },
 
-    /// Install the newest Rebeam CLI release
+    /// Install the newest Reshard CLI release
     Update {
         /// Install a specific release tag, for example `v0.2.0`
         version: Option<String>,
-        /// GitHub repository that publishes Rebeam releases
-        #[arg(long, env = "REBEAM_RELEASE_REPO", default_value = "T31K/rebeam")]
+        /// GitHub repository that publishes Reshard releases
+        #[arg(long, env = "RESHARD_RELEASE_REPO", default_value = "reshardhq/reshard")]
         repo: String,
         /// Only report whether an update is available
         #[arg(long)]
@@ -167,7 +167,7 @@ enum Verb {
     Service {
         #[arg(value_enum)]
         action: ServiceAction,
-        /// Override the global Rebeam config location
+        /// Override the global Reshard config location
         #[arg(short, long)]
         config: Option<PathBuf>,
     },
@@ -185,16 +185,16 @@ enum Verb {
     Connect {
         /// The code from the app, `RB-7K2M-QX4P`
         code: String,
-        /// Agent runtime selected in the Rebeam app
+        /// Agent runtime selected in the Reshard app
         #[arg(long, value_enum)]
         provider: AgentProvider,
         /// What this agent is called in the member list
         #[arg(short, long)]
         name: String,
-        /// How to run it. `$REBEAM_TEXT` is the incoming message
+        /// How to run it. `$RESHARD_TEXT` is the incoming message
         #[arg(short, long)]
         exec: Option<String>,
-        /// Override the global Rebeam config location
+        /// Override the global Reshard config location
         #[arg(short, long)]
         config: Option<PathBuf>,
         /// Connect only; don't start the gateway
@@ -206,7 +206,7 @@ enum Verb {
         cwd: Option<PathBuf>,
     },
 
-    /// Run an ACP-speaking agent for one prompt. rebeam provisions the adapter.
+    /// Run an ACP-speaking agent for one prompt. reshard provisions the adapter.
     Acp {
         /// Provider to auto-launch: claude | codex | gemini
         #[arg(short, long)]
@@ -215,7 +215,7 @@ enum Verb {
         /// e.g. "npx -y @agentclientprotocol/claude-agent-acp"
         #[arg(short, long)]
         command: Option<String>,
-        /// Prompt to send (gateway mode reads $REBEAM_CONTEXT instead)
+        /// Prompt to send (gateway mode reads $RESHARD_CONTEXT instead)
         #[arg(short = 'm', long)]
         message: Option<String>,
         /// Deny every permission request instead of asking
@@ -236,7 +236,7 @@ enum Verb {
         cwd: Option<PathBuf>,
     },
 
-    /// Pair this machine with a Rebeam workspace
+    /// Pair this machine with a Reshard workspace
     Pair { code: String },
 
     /// List chats
@@ -278,7 +278,7 @@ enum ServiceAction {
 
 #[derive(Clone, Subcommand)]
 enum AuthAction {
-    /// Link this machine through the Rebeam app
+    /// Link this machine through the Reshard app
     Login {
         /// Name shown in the app's machine list
         #[arg(long)]
@@ -292,7 +292,7 @@ enum AuthAction {
 
 #[derive(Clone, Subcommand)]
 enum RuntimeAction {
-    /// Install a provider adapter into Rebeam's private runtime directory
+    /// Install a provider adapter into Reshard's private runtime directory
     Install { id: String },
     /// Explain one runtime's readiness and remediation
     Doctor {
@@ -571,12 +571,12 @@ async fn run() -> Result<ExitCode> {
             let invite: Invite = res.json().await?;
 
             // The code is the value; everything else is for the human reading
-            // over its shoulder. Keeps `rebeam invite -c x | pbcopy` honest.
+            // over its shoulder. Keeps `reshard invite -c x | pbcopy` honest.
             println!("{}", invite.code);
             eprintln!(
                 "\n  {}\n  {}\n",
                 "run this where the agent lives:".dimmed(),
-                format!("rebeam connect {} --name <agent-name>", invite.code).cyan()
+                format!("reshard connect {} --name <agent-name>", invite.code).cyan()
             );
             let mins = (invite.expires_at - now_millis()) / 60_000;
             eprintln!(
@@ -603,20 +603,20 @@ async fn run() -> Result<ExitCode> {
         } => {
             let provider = provider.as_str();
             // Where the agent works: the given --cwd, else the directory connect
-            // is run from — so `cd Projects/BG && rebeam connect …` binds it to BG.
+            // is run from — so `cd Projects/BG && reshard connect …` binds it to BG.
             let work_dir = cwd
                 .clone()
                 .or_else(|| std::env::current_dir().ok())
                 .unwrap_or_else(|| PathBuf::from("."));
             let exec = match exec {
                 Some(e) => e.clone(),
-                // ACP providers run through rebeam's ACP bridge: it streams tool
+                // ACP providers run through reshard's ACP bridge: it streams tool
                 // chips to the relay and (for claude) uses the subscription login.
                 // The gateway captures the reply on stdout. --cwd makes claude
                 // read that project's CLAUDE.md/docs.
                 None if matches!(provider, "claude" | "codex") => {
                     format!(
-                        "rebeam acp --provider {provider} --gateway --cwd {}",
+                        "reshard acp --provider {provider} --gateway --cwd {}",
                         shell_quote(&work_dir.display().to_string())
                     )
                 }
@@ -666,7 +666,7 @@ async fn run() -> Result<ExitCode> {
             );
 
             if *no_gateway {
-                println!("\n  {}", "rebeam gateway".cyan());
+                println!("\n  {}", "reshard gateway".cyan());
             } else {
                 // Joining and then not listening is never what anyone wanted,
                 // and a command that ends by telling you the next step should
@@ -701,7 +701,7 @@ async fn run() -> Result<ExitCode> {
                                     "  {} {start_error:#}",
                                     "could not start gateway".yellow()
                                 );
-                                eprintln!("  {}", "start it yourself: rebeam gateway".cyan());
+                                eprintln!("  {}", "start it yourself: reshard gateway".cyan());
                             }
                         }
                     }
@@ -747,13 +747,13 @@ async fn run() -> Result<ExitCode> {
                         .map(|t| t.trim().to_string())
                         .with_context(|| {
                             format!(
-                                "no machine credential at {} — run `rebeam pair <code>`",
+                                "no machine credential at {} — run `reshard pair <code>`",
                                 token_path.display()
                             )
                         })?;
-                    let chat = std::env::var("REBEAM_CHAT")
-                        .context("REBEAM_CHAT is unset (gateway mode)")?;
-                    let prompt = std::env::var("REBEAM_CONTEXT")
+                    let chat = std::env::var("RESHARD_CHAT")
+                        .context("RESHARD_CHAT is unset (gateway mode)")?;
+                    let prompt = std::env::var("RESHARD_CONTEXT")
                         .ok()
                         .filter(|value| !value.is_empty())
                         .or_else(|| message.clone())
@@ -869,7 +869,7 @@ async fn listen(
     json: bool,
 ) -> Result<()> {
     let token =
-        read_machine_token()?.context("this machine is not signed in; run `rebeam auth login`")?;
+        read_machine_token()?.context("this machine is not signed in; run `reshard auth login`")?;
     // Resolve the chat name to an id once, so filtering is a cheap comparison.
     let filter = match chat {
         Some(needle) => {
@@ -1047,7 +1047,7 @@ async fn auth_login(client: &reqwest::Client, relay: &str, machine_name: &str) -
     if authorization.verification_uri.starts_with("http") {
         println!("  Open: {}", authorization.verification_uri.cyan());
     } else {
-        println!("  Open Rebeam → Preferences → Machines");
+        println!("  Open Reshard → Preferences → Machines");
     }
     println!("  Enter: {}", authorization.user_code.cyan().bold());
     println!("\n{}", "waiting for approval…".yellow());
@@ -1095,7 +1095,7 @@ async fn auth_login(client: &reqwest::Client, relay: &str, machine_name: &str) -
             other => bail!("unexpected device authorization state {other:?}"),
         }
     }
-    bail!("device authorization expired; run `rebeam auth login` again")
+    bail!("device authorization expired; run `reshard auth login` again")
 }
 
 async fn auth_status(client: &reqwest::Client, relay: &str) -> Result<()> {
@@ -1167,7 +1167,7 @@ async fn auth_logout(client: &reqwest::Client, relay: &str) -> Result<()> {
         println!("{} signed out and revoked this machine", "✓".green());
     } else {
         println!("{} signed out locally", "✓".green());
-        println!("  Revoke this machine in Rebeam when the relay is reachable.");
+        println!("  Revoke this machine in Reshard when the relay is reachable.");
     }
     Ok(())
 }
@@ -1286,13 +1286,13 @@ pub(crate) fn provider_for_exec(exec: &str) -> String {
 pub(crate) fn managed_exec(provider: &str) -> Option<&'static str> {
     match provider {
         "claude" => Some(
-            r#"if [ "$REBEAM_SESSION_RESUME" = 1 ]; then claude -p --output-format json --resume "$REBEAM_SESSION" "$REBEAM_CONTEXT"; else claude -p --output-format json --session-id "$REBEAM_SESSION" "$REBEAM_CONTEXT"; fi"#,
+            r#"if [ "$RESHARD_SESSION_RESUME" = 1 ]; then claude -p --output-format json --resume "$RESHARD_SESSION" "$RESHARD_CONTEXT"; else claude -p --output-format json --session-id "$RESHARD_SESSION" "$RESHARD_CONTEXT"; fi"#,
         ),
         "codex" => Some(
-            r#"if [ "$REBEAM_SESSION_RESUME" = 1 ]; then codex exec resume --json "$REBEAM_SESSION" "$REBEAM_CONTEXT"; else codex exec --json "$REBEAM_CONTEXT"; fi"#,
+            r#"if [ "$RESHARD_SESSION_RESUME" = 1 ]; then codex exec resume --json "$RESHARD_SESSION" "$RESHARD_CONTEXT"; else codex exec --json "$RESHARD_CONTEXT"; fi"#,
         ),
         "hermes" => Some(
-            r#"if [ "$REBEAM_SESSION_RESUME" = 1 ]; then hermes chat -Q --source rebeam --resume "$REBEAM_SESSION" -q "$REBEAM_CONTEXT"; else hermes chat -Q --source rebeam -q "$REBEAM_CONTEXT"; fi"#,
+            r#"if [ "$RESHARD_SESSION_RESUME" = 1 ]; then hermes chat -Q --source reshard --resume "$RESHARD_SESSION" -q "$RESHARD_CONTEXT"; else hermes chat -Q --source reshard -q "$RESHARD_CONTEXT"; fi"#,
         ),
         _ => None,
     }
@@ -1326,7 +1326,7 @@ fn default_config_path() -> PathBuf {
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
-    home.join(".rebeam").join("config.toml")
+    home.join(".reshard").join("config.toml")
 }
 
 fn write_agent(path: &std::path::Path, name: &str, provider: &str, exec: &str) -> Result<()> {
@@ -1336,7 +1336,7 @@ fn write_agent(path: &std::path::Path, name: &str, provider: &str, exec: &str) -
     if !path.exists() {
         std::fs::write(
             path,
-            "# Rebeam machine configuration\n[chats]\ndirectory = \"chats\"\n",
+            "# Reshard machine configuration\n[chats]\ndirectory = \"chats\"\n",
         )
         .with_context(|| format!("writing {}", path.display()))?;
     }
@@ -1359,12 +1359,12 @@ fn write_agent(path: &std::path::Path, name: &str, provider: &str, exec: &str) -
     Ok(())
 }
 
-const SERVICE_LABEL: &str = "app.rebeam.gateway";
+const SERVICE_LABEL: &str = "app.reshard.gateway";
 
 /// Install a per-user service. No root access: launchd owns it on macOS and
 /// the user's systemd instance owns it on Linux.
 fn install_bridge_service(relay: &str, config: &Path) -> Result<PathBuf> {
-    let exe = std::env::current_exe().context("locating the rebeam binary")?;
+    let exe = std::env::current_exe().context("locating the reshard binary")?;
     let config = std::fs::canonicalize(config).unwrap_or_else(|_| config.to_path_buf());
     let root = config.parent().unwrap_or_else(|| Path::new("."));
     std::fs::create_dir_all(root)?;
@@ -1448,7 +1448,7 @@ fn install_launch_agent(exe: &Path, relay: &str, config: &Path, log: &Path) -> R
         std::process::Command::new("launchctl")
             .args(["bootstrap", &domain])
             .arg(&plist),
-        "loading the Rebeam launch agent",
+        "loading the Reshard launch agent",
     )?;
     let _ = std::process::Command::new("launchctl")
         .args(["enable", &format!("{domain}/{SERVICE_LABEL}")])
@@ -1459,7 +1459,7 @@ fn install_launch_agent(exe: &Path, relay: &str, config: &Path, log: &Path) -> R
             "-k",
             &format!("{domain}/{SERVICE_LABEL}"),
         ]),
-        "starting the Rebeam launch agent",
+        "starting the Reshard launch agent",
     )
 }
 
@@ -1474,13 +1474,13 @@ fn install_systemd_user_service(exe: &Path, relay: &str, config: &Path, log: &Pa
     let path = std::env::var("PATH").unwrap_or_else(|_| "/usr/local/bin:/usr/bin:/bin".into());
     let units = PathBuf::from(&home).join(".config/systemd/user");
     std::fs::create_dir_all(&units)?;
-    let unit = units.join("rebeam-gateway.service");
+    let unit = units.join("reshard-gateway.service");
     let _ = std::process::Command::new("systemctl")
-        .args(["--user", "stop", "rebeam-gateway.service"])
+        .args(["--user", "stop", "reshard-gateway.service"])
         .status();
     stop_gateway_processes();
     let document = format!(
-        "[Unit]\nDescription=Rebeam agent gateway\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=simple\nEnvironment={}\nEnvironment={}\nExecStart={} --relay {} gateway --config {}\nRestart=always\nRestartSec=3\nStandardOutput=append:{}\nStandardError=append:{}\n\n[Install]\nWantedBy=default.target\n",
+        "[Unit]\nDescription=Reshard agent gateway\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=simple\nEnvironment={}\nEnvironment={}\nExecStart={} --relay {} gateway --config {}\nRestart=always\nRestartSec=3\nStandardOutput=append:{}\nStandardError=append:{}\n\n[Install]\nWantedBy=default.target\n",
         systemd_value(&format!("HOME={home}")),
         systemd_value(&format!("PATH={path}")),
         systemd_quote(exe),
@@ -1506,9 +1506,9 @@ fn install_systemd_user_service(exe: &Path, relay: &str, config: &Path, log: &Pa
             "--user",
             "enable",
             "--now",
-            "rebeam-gateway.service",
+            "reshard-gateway.service",
         ]),
-        "enabling the Rebeam user service",
+        "enabling the Reshard user service",
     )
 }
 
@@ -1541,10 +1541,10 @@ fn uninstall_bridge_service() -> Result<()> {
             #[cfg(target_os = "linux")]
             {
                 let _ = std::process::Command::new("systemctl")
-                    .args(["--user", "disable", "--now", "rebeam-gateway.service"])
+                    .args(["--user", "disable", "--now", "reshard-gateway.service"])
                     .status();
                 let home = std::env::var("HOME").context("HOME is not set")?;
-                let unit = PathBuf::from(home).join(".config/systemd/user/rebeam-gateway.service");
+                let unit = PathBuf::from(home).join(".config/systemd/user/reshard-gateway.service");
                 match std::fs::remove_file(&unit) {
                     Ok(()) => {}
                     Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
@@ -1583,7 +1583,7 @@ fn bridge_service_running() -> bool {
             #[cfg(target_os = "linux")]
             {
                 std::process::Command::new("systemctl")
-                    .args(["--user", "is-active", "--quiet", "rebeam-gateway.service"])
+                    .args(["--user", "is-active", "--quiet", "reshard-gateway.service"])
                     .status()
                     .is_ok_and(|status| status.success())
             }
@@ -1597,7 +1597,7 @@ fn bridge_service_running() -> bool {
 
 fn stop_gateway_processes() {
     let _ = std::process::Command::new("pkill")
-        .args(["-f", "rebeam.*gateway"])
+        .args(["-f", "reshard.*gateway"])
         .status();
 }
 
@@ -1643,7 +1643,7 @@ fn systemd_value(value: &str) -> String {
     )
 }
 
-/// Start `rebeam gateway` detached, and return where its output went.
+/// Start `reshard gateway` detached, and return where its output went.
 ///
 /// Not a service yet — this still dies with the machine, and installing a
 /// launchd/systemd unit is the real fix. But it removes the step that everyone,
@@ -1655,12 +1655,12 @@ fn start_bridge(relay: &str, config: &std::path::Path) -> Result<String> {
         return Ok("already running".into());
     }
 
-    let log_path = std::env::temp_dir().join("rebeam-gateway.log");
+    let log_path = std::env::temp_dir().join("reshard-gateway.log");
     let log = std::fs::File::create(&log_path)
         .with_context(|| format!("creating {}", log_path.display()))?;
     let errlog = log.try_clone()?;
 
-    let exe = std::env::current_exe().context("locating the rebeam binary")?;
+    let exe = std::env::current_exe().context("locating the reshard binary")?;
     Command::new(exe)
         .arg("--relay")
         .arg(relay)
@@ -1680,7 +1680,7 @@ fn start_bridge(relay: &str, config: &std::path::Path) -> Result<String> {
 
 fn bridge_running() -> bool {
     std::process::Command::new("pgrep")
-        .args(["-f", "rebeam.*\\bgateway\\b"])
+        .args(["-f", "reshard.*\\bgateway\\b"])
         .output()
         .map(|o| !o.stdout.is_empty())
         .unwrap_or(false)
@@ -1709,19 +1709,19 @@ mod tests {
 
     #[test]
     fn auth_commands_are_part_of_the_public_cli() {
-        assert!(Cli::try_parse_from(["rebeam", "auth", "login"]).is_ok());
-        assert!(Cli::try_parse_from(["rebeam", "auth", "status"]).is_ok());
-        assert!(Cli::try_parse_from(["rebeam", "auth", "logout"]).is_ok());
-        assert!(Cli::try_parse_from(["rebeam"]).is_ok());
-        assert!(Cli::try_parse_from(["rebeam", "setup", "--runtime", "claude"]).is_ok());
-        assert!(Cli::try_parse_from(["rebeam", "runtimes", "--json"]).is_ok());
-        assert!(Cli::try_parse_from(["rebeam", "runtime", "doctor", "codex"]).is_ok());
+        assert!(Cli::try_parse_from(["reshard", "auth", "login"]).is_ok());
+        assert!(Cli::try_parse_from(["reshard", "auth", "status"]).is_ok());
+        assert!(Cli::try_parse_from(["reshard", "auth", "logout"]).is_ok());
+        assert!(Cli::try_parse_from(["reshard"]).is_ok());
+        assert!(Cli::try_parse_from(["reshard", "setup", "--runtime", "claude"]).is_ok());
+        assert!(Cli::try_parse_from(["reshard", "runtimes", "--json"]).is_ok());
+        assert!(Cli::try_parse_from(["reshard", "runtime", "doctor", "codex"]).is_ok());
     }
 
     #[test]
     fn acp_permissions_ask_by_default_and_bulk_allow_is_explicit() {
         let cli =
-            Cli::try_parse_from(["rebeam", "acp", "--provider", "codex", "--message", "test"])
+            Cli::try_parse_from(["reshard", "acp", "--provider", "codex", "--message", "test"])
                 .unwrap();
         let Some(Verb::Acp {
             deny, allow_all, ..
@@ -1732,7 +1732,7 @@ mod tests {
         assert!(!deny);
         assert!(!allow_all);
         assert!(Cli::try_parse_from([
-            "rebeam",
+            "reshard",
             "acp",
             "--provider",
             "codex",
@@ -1749,7 +1749,7 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
 
         let root = std::env::temp_dir().join(format!(
-            "rebeam-cli-secret-test-{}",
+            "reshard-cli-secret-test-{}",
             uuid::Uuid::new_v4().simple()
         ));
         let path = root.join("machine-token");

@@ -1,9 +1,9 @@
 [package]
-name = "rebeam-core"
+name = "reshard-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "The rebeam protocol: commands in, events out."
+description = "The reshard protocol: commands in, events out."
 
 [dependencies]
 serde = { workspace = true }

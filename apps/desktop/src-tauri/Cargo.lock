@@ -830,7 +830,7 @@ name = "desktop"
 version = "0.1.0"
 dependencies = [
  "keyring",
- "rebeam-runtime",
+ "reshard-runtime",
  "serde",
  "serde_json",
  "tauri",
@@ -3022,7 +3022,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
 
 [[package]]
-name = "rebeam-runtime"
+name = "reshard-runtime"
 version = "0.1.0"
 dependencies = [
  "agent-client-protocol",

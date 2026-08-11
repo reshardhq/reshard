@@ -2,7 +2,7 @@
 //!
 //! Messages *are* the log: one append-only table with a per-chat monotonic
 //! `seq`, which is all a reconnecting client needs to catch up. Status events
-//! never reach this module — see [`rebeam_core::Event::is_durable`].
+//! never reach this module — see [`reshard_core::Event::is_durable`].
 
 use std::{
     sync::Mutex,
@@ -14,7 +14,7 @@ use argon2::{
     Argon2,
 };
 use rand_core::OsRng;
-use rebeam_core::{
+use reshard_core::{
     Approval, ApprovalDecision, ApprovalDisplay, ApprovalState, Chat, ChatKind, HistoryGrant,
     Invite, Member, MemberKind, Membership, Message, MessageKind, Presence, Trigger,
 };
@@ -528,7 +528,7 @@ impl Store {
         let machine = MachineRecord {
             id: format!("machine_{}", uuid::Uuid::new_v4().simple()),
             name: if found.machine_name.trim().is_empty() {
-                "Rebeam CLI".to_string()
+                "Reshard CLI".to_string()
             } else {
                 found.machine_name
             },
@@ -1620,7 +1620,7 @@ impl Store {
             "INSERT INTO invites (code, chat_id, invited_by, history, expires_at, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![
-                rebeam_core::normalize_code(&invite.code),
+                reshard_core::normalize_code(&invite.code),
                 invite.chat,
                 invite.invited_by,
                 serde_json::to_string(&invite.history).unwrap(),
@@ -1637,7 +1637,7 @@ impl Store {
         let conn = self.conn.lock().unwrap();
         conn.query_row(
             "SELECT invited_by FROM invites WHERE code = ?1",
-            params![rebeam_core::normalize_code(code)],
+            params![reshard_core::normalize_code(code)],
             |r| r.get(0),
         )
         .optional()
@@ -1651,7 +1651,7 @@ impl Store {
         member: &str,
         now: i64,
     ) -> rusqlite::Result<Result<Membership, String>> {
-        let key = rebeam_core::normalize_code(code);
+        let key = reshard_core::normalize_code(code);
         let conn = self.conn.lock().unwrap();
 
         let found: Option<(String, String, String, i64, Option<String>)> = conn
@@ -1715,7 +1715,7 @@ impl Store {
     ) -> rusqlite::Result<Member> {
         // The name is the mention handle, so it is normalized before it is
         // ever stored — a member called "Hermes 1" could never be triggered.
-        let name = &rebeam_core::handle(name);
+        let name = &reshard_core::handle(name);
         let conn = self.conn.lock().unwrap();
         let existing: Option<String> = conn
             .query_row(
@@ -2008,7 +2008,7 @@ fn new_code() -> String {
     let bytes = uuid::Uuid::new_v4();
     let chars: String = bytes.as_bytes()[..Invite::LEN]
         .iter()
-        .map(|b| rebeam_core::CODE_ALPHABET[(b & 0x1f) as usize] as char)
+        .map(|b| reshard_core::CODE_ALPHABET[(b & 0x1f) as usize] as char)
         .collect();
     format!("RB-{}-{}", &chars[..4], &chars[4..])
 }
@@ -2234,7 +2234,7 @@ mod tests {
 
     fn temporary_database() -> std::path::PathBuf {
         std::env::temp_dir().join(format!(
-            "rebeam-auth-test-{}.db",
+            "reshard-auth-test-{}.db",
             uuid::Uuid::new_v4().simple()
         ))
     }

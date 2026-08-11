@@ -60,7 +60,7 @@ export function InviteModal() {
   }
 
   const snippet = invite
-    ? `rebeam connect ${invite.code} --provider ${provider} --name ${agentName.trim() || "<agent-name>"}`
+    ? `reshard connect ${invite.code} --provider ${provider} --name ${agentName.trim() || "<agent-name>"}`
     : "";
   return (
     <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
@@ -72,8 +72,8 @@ export function InviteModal() {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
-          <Instruction number="1" title="Install Rebeam CLI" command="curl -fsSL https://raw.githubusercontent.com/T31K/rebeam/main/install.sh | sh" />
-          <Instruction number="2" title="Pair this machine" command={pairingCode ? `rebeam pair ${pairingCode}` : "Preparing pairing command…"} />
+          <Instruction number="1" title="Install Reshard CLI" command="curl -fsSL https://raw.githubusercontent.com/reshardhq/reshard/main/install.sh | sh" />
+          <Instruction number="2" title="Pair this machine" command={pairingCode ? `reshard pair ${pairingCode}` : "Preparing pairing command…"} />
           <div className="rounded-lg border p-3">
             <div className="mb-2 flex items-center gap-2 text-sm font-medium"><span className="flex size-5 items-center justify-center rounded-full bg-muted font-mono text-[10px]">3</span> Ask your agent to join</div>
             {invite ? (

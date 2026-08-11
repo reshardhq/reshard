@@ -1,7 +1,7 @@
-//! `claude-code-acp` — rebeam's own ACP adapter for the Claude Code CLI.
+//! `claude-code-acp` — reshard's own ACP adapter for the Claude Code CLI.
 //!
-//! rebeam ships this so `--provider claude` needs **no Node** and uses the
-//! user's **Claude Code subscription login**: an ACP client (the rebeam gateway)
+//! reshard ships this so `--provider claude` needs **no Node** and uses the
+//! user's **Claude Code subscription login**: an ACP client (the reshard gateway)
 //! spawns this over stdio, and it drives `claude -p --output-format stream-json`,
 //! translating Claude's JSONL into ACP session updates and permission requests.
 //!
@@ -43,7 +43,7 @@ type Sessions = Arc<Mutex<HashMap<String, SessionState>>>;
 /// Where per-chat Claude session ids are persisted. The gateway spawns this
 /// adapter fresh for every message, so in-memory state can't carry a
 /// conversation forward — we persist Claude's `session_id` keyed by chat
-/// (REBEAM_CHAT) and `--resume` it, which is what makes the agent remember.
+/// (RESHARD_CHAT) and `--resume` it, which is what makes the agent remember.
 fn session_file(chat: &str) -> Option<PathBuf> {
     let home = std::env::var_os("HOME")?;
     let safe: String = chat
@@ -58,7 +58,7 @@ fn session_file(chat: &str) -> Option<PathBuf> {
         .collect();
     Some(
         PathBuf::from(home)
-            .join(".rebeam")
+            .join(".reshard")
             .join("sessions")
             .join(format!("{safe}.txt")),
     )
@@ -139,7 +139,7 @@ async fn main() -> Result<()> {
                     "--verbose".into(),
                     // Don't inherit the user's personal MCP servers (reminders,
                     // calendar, contacts, …). They trigger macOS permission
-                    // prompts attributed to `rebeam` and aren't the agent's job.
+                    // prompts attributed to `reshard` and aren't the agent's job.
                     "--strict-mcp-config".into(),
                     // Keep Claude's normal permission boundary. Gateway mode
                     // adds the private permission-prompt MCP bridge below;
@@ -147,24 +147,24 @@ async fn main() -> Result<()> {
                     "--permission-mode".into(),
                     "default".into(),
                 ];
-                let mcp_config = if std::env::var_os("REBEAM_MACHINE_TOKEN").is_some() {
+                let mcp_config = if std::env::var_os("RESHARD_MACHINE_TOKEN").is_some() {
                     let config = write_permission_mcp_config()?;
                     args.extend([
                         "--mcp-config".into(),
                         config.display().to_string(),
                         "--permission-prompt-tool".into(),
-                        "mcp__rebeam_permissions__request".into(),
+                        "mcp__reshard_permissions__request".into(),
                         "--allowedTools".into(),
-                        "mcp__rebeam_permissions__request".into(),
+                        "mcp__reshard_permissions__request".into(),
                     ]);
                     Some(config)
                 } else {
                     None
                 };
                 // Resume this chat's Claude session so the agent remembers the
-                // conversation. Persisted per chat (REBEAM_CHAT) because the
+                // conversation. Persisted per chat (RESHARD_CHAT) because the
                 // gateway spawns this adapter fresh on every message.
-                let resume_id = std::env::var("REBEAM_CHAT")
+                let resume_id = std::env::var("RESHARD_CHAT")
                     .ok()
                     .filter(|c| !c.is_empty())
                     .and_then(|c| load_claude_session(&c))
@@ -185,7 +185,7 @@ async fn main() -> Result<()> {
                     .env_remove("ANTHROPIC_AUTH_TOKEN")
                     // The machine credential is for the private MCP child,
                     // never for Claude itself or a provider tool subprocess.
-                    .env_remove("REBEAM_MACHINE_TOKEN");
+                    .env_remove("RESHARD_MACHINE_TOKEN");
                 if let Some(cwd) = &cwd {
                     command.current_dir(cwd);
                 }
@@ -325,7 +325,7 @@ async fn main() -> Result<()> {
 
                 if let Some(sid) = new_claude_session {
                     // Persist for the next message in this chat (continuity).
-                    if let Ok(chat) = std::env::var("REBEAM_CHAT") {
+                    if let Ok(chat) = std::env::var("RESHARD_CHAT") {
                         if !chat.is_empty() {
                             save_claude_session(&chat, &sid);
                         }
@@ -348,11 +348,11 @@ async fn main() -> Result<()> {
 
 fn write_permission_mcp_config() -> AnyhowResult<std::path::PathBuf> {
     let executable =
-        rebeam_cli_path().context("the rebeam CLI is not available next to claude-code-acp")?;
-    let root = std::env::var_os("REBEAM_HOME")
+        reshard_cli_path().context("the reshard CLI is not available next to claude-code-acp")?;
+    let root = std::env::var_os("RESHARD_HOME")
         .map(std::path::PathBuf::from)
         .or_else(|| {
-            std::env::var_os("HOME").map(|home| std::path::PathBuf::from(home).join(".rebeam"))
+            std::env::var_os("HOME").map(|home| std::path::PathBuf::from(home).join(".reshard"))
         })
         .unwrap_or_else(|| std::path::PathBuf::from("."));
     let dir = root.join("runs");
@@ -361,11 +361,11 @@ fn write_permission_mcp_config() -> AnyhowResult<std::path::PathBuf> {
     let path = dir.join(format!("permission-{}.json", uuid::Uuid::new_v4().simple()));
     let config = serde_json::json!({
         "mcpServers": {
-            "rebeam_permissions": {
+            "reshard_permissions": {
                 "command": executable,
                 "args": ["permission-mcp"],
                 "env": {
-                    "REBEAM_MACHINE_TOKEN": std::env::var("REBEAM_MACHINE_TOKEN")
+                    "RESHARD_MACHINE_TOKEN": std::env::var("RESHARD_MACHINE_TOKEN")
                         .context("machine credential is missing from the adapter")?
                 }
             }
@@ -382,8 +382,8 @@ fn write_permission_mcp_config() -> AnyhowResult<std::path::PathBuf> {
     Ok(path)
 }
 
-fn rebeam_cli_path() -> Option<std::path::PathBuf> {
-    if let Some(path) = std::env::var_os("REBEAM_CLI").map(std::path::PathBuf::from) {
+fn reshard_cli_path() -> Option<std::path::PathBuf> {
+    if let Some(path) = std::env::var_os("RESHARD_CLI").map(std::path::PathBuf::from) {
         if path.is_file() {
             return Some(path);
         }
@@ -391,7 +391,7 @@ fn rebeam_cli_path() -> Option<std::path::PathBuf> {
     let sibling = std::env::current_exe()
         .ok()
         .and_then(|path| path.parent().map(|parent| parent.to_path_buf()))?;
-    for name in ["rebeam", "rebeam.exe"] {
+    for name in ["reshard", "reshard.exe"] {
         let candidate = sibling.join(name);
         if candidate.is_file() {
             return Some(candidate);
@@ -400,7 +400,7 @@ fn rebeam_cli_path() -> Option<std::path::PathBuf> {
     std::env::var_os("PATH")
         .into_iter()
         .flat_map(|paths| std::env::split_paths(&paths).collect::<Vec<_>>())
-        .map(|path| path.join("rebeam"))
+        .map(|path| path.join("reshard"))
         .find(|path| path.is_file())
 }
 
@@ -411,25 +411,25 @@ mod tests {
     #[test]
     fn permission_config_is_private_and_contains_only_the_mcp_child_secret() {
         let root = std::env::temp_dir().join(format!(
-            "rebeam-mcp-config-test-{}",
+            "reshard-mcp-config-test-{}",
             uuid::Uuid::new_v4().simple()
         ));
-        let cli = root.join("rebeam");
+        let cli = root.join("reshard");
         std::fs::create_dir_all(&root).unwrap();
         std::fs::write(&cli, "fake cli").unwrap();
-        std::env::set_var("REBEAM_HOME", &root);
-        std::env::set_var("REBEAM_CLI", &cli);
-        std::env::set_var("REBEAM_MACHINE_TOKEN", "rm_ephemeral_test");
+        std::env::set_var("RESHARD_HOME", &root);
+        std::env::set_var("RESHARD_CLI", &cli);
+        std::env::set_var("RESHARD_MACHINE_TOKEN", "rm_ephemeral_test");
 
         let path = write_permission_mcp_config().unwrap();
         let config: serde_json::Value =
             serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         assert_eq!(
-            config["mcpServers"]["rebeam_permissions"]["args"][0],
+            config["mcpServers"]["reshard_permissions"]["args"][0],
             "permission-mcp"
         );
         assert_eq!(
-            config["mcpServers"]["rebeam_permissions"]["env"]["REBEAM_MACHINE_TOKEN"],
+            config["mcpServers"]["reshard_permissions"]["env"]["RESHARD_MACHINE_TOKEN"],
             "rm_ephemeral_test"
         );
         #[cfg(unix)]
@@ -441,8 +441,8 @@ mod tests {
             );
         }
         let _ = std::fs::remove_dir_all(root);
-        std::env::remove_var("REBEAM_HOME");
-        std::env::remove_var("REBEAM_CLI");
-        std::env::remove_var("REBEAM_MACHINE_TOKEN");
+        std::env::remove_var("RESHARD_HOME");
+        std::env::remove_var("RESHARD_CLI");
+        std::env::remove_var("RESHARD_MACHINE_TOKEN");
     }
 }

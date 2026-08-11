@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { RuntimeInventoryItem } from "./runtimes";
 
 const RELAY = import.meta.env.VITE_RELAY ?? "http://127.0.0.1:8787";
-const BROWSER_SESSION_KEY = "rebeam.authSession";
+const BROWSER_SESSION_KEY = "reshard.authSession";
 
 export interface AuthUser {
   id: string;

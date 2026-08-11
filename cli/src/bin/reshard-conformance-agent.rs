@@ -1,9 +1,9 @@
-//! `rebeam-conformance-agent` — a deterministic ACP agent used only by the
+//! `reshard-conformance-agent` — a deterministic ACP agent used only by the
 //! conformance test (`cli/tests/conformance.rs`).
 //!
 //! It is NOT a real provider. It implements the agent side of the ACP contract
 //! with behavior selected by the prompt text, so one binary exercises every
-//! stage rebeam depends on: initialize, session/new, streaming, tool telemetry,
+//! stage reshard depends on: initialize, session/new, streaming, tool telemetry,
 //! `session/request_permission`, cancellation, and crash recovery.
 //!
 //! All per-turn work runs inside `connection.spawn` (holding the responder to
@@ -54,7 +54,7 @@ async fn stream_text(conn: &ConnectionTo<Client>, session_id: &SessionId, text: 
 async fn main() -> Result<()> {
     Agent
         .builder()
-        .name("rebeam-conformance-agent")
+        .name("reshard-conformance-agent")
         .on_receive_request(
             async |req: InitializeRequest, responder, _connection| {
                 responder.respond(
@@ -138,7 +138,7 @@ async fn main() -> Result<()> {
                         }
                         "hang" => {
                             // Never respond: the client cancels by abandoning the
-                            // prompt and dropping the connection (rebeam's real path).
+                            // prompt and dropping the connection (reshard's real path).
                             tokio::time::sleep(Duration::from_secs(3600)).await;
                             responder.respond(PromptResponse::new(StopReason::EndTurn))?;
                         }

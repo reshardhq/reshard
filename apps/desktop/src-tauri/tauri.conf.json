@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Rebeam",
+  "productName": "Reshard",
   "version": "0.1.0",
-  "identifier": "app.rebeam.desktop",
+  "identifier": "app.reshard.desktop",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Rebeam",
+        "title": "Reshard",
         "width": 1180,
         "height": 760,
         "minWidth": 1040,

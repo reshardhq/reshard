@@ -19,7 +19,7 @@ import {
 
 const RELAY = import.meta.env.VITE_RELAY ?? "http://127.0.0.1:8787";
 
-/** Wire events from the relay — mirrors rebeam-core::Event. */
+/** Wire events from the relay — mirrors reshard-core::Event. */
 type WireEvent =
   | { t: "message"; message: Message }
   | { t: "messageUpdated"; message: Message }

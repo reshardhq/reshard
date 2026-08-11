@@ -1,19 +1,19 @@
-//! `rebeam gateway` — the bridge.
+//! `reshard gateway` — the bridge.
 //!
 //! Holds one connection to the relay and wakes local agents when messages
-//! arrive for them. The agent never learns rebeam exists: it gets the message
-//! text in `$REBEAM_TEXT` and whatever it prints becomes the reply.
+//! arrive for them. The agent never learns reshard exists: it gets the message
+//! text in `$RESHARD_TEXT` and whatever it prints becomes the reply.
 //!
 //! The relay owns identity and authorization — which chats an agent is in, how
 //! far back it may read, when it wakes. This file owns one thing:
 //!
 //! ```toml
-//! # ~/.rebeam/chats/claude-main.toml
+//! # ~/.reshard/chats/claude-main.toml
 //! name = "shopbot"
-//! exec = 'claude -p "$REBEAM_TEXT" --resume "$REBEAM_SESSION"'
+//! exec = 'claude -p "$RESHARD_TEXT" --resume "$RESHARD_SESSION"'
 //! ```
 //!
-//! `rebeam connect <code>` writes that block. Everything else is a membership.
+//! `reshard connect <code>` writes that block. Everything else is a membership.
 
 use std::collections::HashMap;
 use std::fs::OpenOptions;
@@ -24,7 +24,7 @@ use std::time::{Duration, Instant};
 use anyhow::{Context, Result};
 use futures_util::{stream::SplitStream, StreamExt};
 use owo_colors::OwoColorize;
-use rebeam_core::{
+use reshard_core::{
     Chat, ChatKind, Command as Cmd, Event, Member, MemberKind, Membership, Message, StatusState,
     Trigger,
 };
@@ -44,13 +44,13 @@ const WINDOW: usize = 50;
 /// How to run one agent. Not where it may speak — the relay decides that.
 #[derive(Clone, Debug, Deserialize)]
 pub struct AgentConfig {
-    /// Must match a member the relay already knows — `rebeam connect` mints it.
+    /// Must match a member the relay already knows — `reshard connect` mints it.
     pub name: String,
     /// Official runner name. Older profiles infer it from `exec`.
     #[serde(default)]
     pub provider: Option<String>,
-    /// Shell command. `$REBEAM_TEXT`, `$REBEAM_CHAT`, `$REBEAM_AUTHOR`,
-    /// `$REBEAM_CONTEXT` and `$REBEAM_SESSION` are in its environment.
+    /// Shell command. `$RESHARD_TEXT`, `$RESHARD_CHAT`, `$RESHARD_AUTHOR`,
+    /// `$RESHARD_CONTEXT` and `$RESHARD_SESSION` are in its environment.
     pub exec: String,
 }
 
@@ -86,7 +86,7 @@ pub async fn run(relay: &str, config_path: &Path) -> Result<()> {
     let token = std::fs::read_to_string(root.join("machine-token"))
         .with_context(|| {
             format!(
-                "no machine credential in {} — run `rebeam pair <code>` first",
+                "no machine credential in {} — run `reshard pair <code>` first",
                 root.display()
             )
         })?
@@ -134,7 +134,7 @@ pub async fn run(relay: &str, config_path: &Path) -> Result<()> {
         })
         .collect();
 
-    println!("{} {relay}", "rebeam gateway".bold());
+    println!("{} {relay}", "reshard gateway".bold());
     for (_, member) in &agents {
         let memberships = memberships_of(&http, relay, &member.id)
             .await
@@ -240,7 +240,7 @@ pub async fn run(relay: &str, config_path: &Path) -> Result<()> {
             _ => continue,
         };
         // System lines are the transcript talking about itself.
-        if matches!(message.kind, rebeam_core::MessageKind::System) {
+        if matches!(message.kind, reshard_core::MessageKind::System) {
             continue;
         }
 
@@ -395,7 +395,7 @@ fn load_agents(config_path: &Path) -> Result<Vec<AgentConfig>> {
     let chats = root.join("chats");
     let entries = std::fs::read_dir(&chats).with_context(|| {
         format!(
-            "no {} — run `rebeam connect <code> --name <agent>` first",
+            "no {} — run `reshard connect <code> --name <agent>` first",
             chats.display()
         )
     })?;
@@ -417,9 +417,9 @@ fn load_agents(config_path: &Path) -> Result<Vec<AgentConfig>> {
         // stateless defaults. Upgrade only those, preserving custom commands.
         let legacy = matches!(
             config.exec.as_str(),
-            "claude -p \"$REBEAM_CONTEXT\""
-                | "codex exec \"$REBEAM_CONTEXT\""
-                | "hermes -p \"$REBEAM_CONTEXT\""
+            "claude -p \"$RESHARD_CONTEXT\""
+                | "codex exec \"$RESHARD_CONTEXT\""
+                | "hermes -p \"$RESHARD_CONTEXT\""
         );
         if legacy {
             if let Some(exec) = managed_exec(&provider) {
@@ -431,7 +431,7 @@ fn load_agents(config_path: &Path) -> Result<Vec<AgentConfig>> {
     }
     if agents.is_empty() {
         anyhow::bail!(
-            "{} has no connected chats — run `rebeam connect <code>` first",
+            "{} has no connected chats — run `reshard connect <code>` first",
             chats.display()
         );
     }
@@ -659,7 +659,7 @@ async fn invoke(
     // ACP gateway profiles run in-process so the worker cache in `acp` can
     // keep one provider session alive for this chat. Custom shell profiles
     // retain the legacy subprocess path.
-    if exec.trim_start().starts_with("rebeam acp") {
+    if exec.trim_start().starts_with("reshard acp") {
         let command = crate::acp::adapter_command(provider)?;
         let cwd = exec
             .split_once("--cwd")
@@ -740,18 +740,18 @@ async fn invoke(
     let out = tokio::process::Command::new("sh")
         .arg("-c")
         .arg(exec)
-        .env("REBEAM_TEXT", &message.text)
-        .env("REBEAM_CONTEXT", &context)
-        .env("REBEAM_CHAT", chat)
-        .env("REBEAM_AUTHOR", &message.author_id)
-        .env("REBEAM_SESSION", &session_id)
+        .env("RESHARD_TEXT", &message.text)
+        .env("RESHARD_CONTEXT", &context)
+        .env("RESHARD_CHAT", chat)
+        .env("RESHARD_AUTHOR", &message.author_id)
+        .env("RESHARD_SESSION", &session_id)
         .env(
-            "REBEAM_SESSION_RESUME",
+            "RESHARD_SESSION_RESUME",
             if session.initialized { "1" } else { "0" },
         )
-        .env("REBEAM_SESSION_FILE", session_path)
-        .env("REBEAM_RELAY", relay)
-        .env("REBEAM_AS", agent)
+        .env("RESHARD_SESSION_FILE", session_path)
+        .env("RESHARD_RELAY", relay)
+        .env("RESHARD_AS", agent)
         .output()
         .await
         .context("spawning the agent command")?;
@@ -804,7 +804,7 @@ async fn invoke(
     };
 
     // All native provider formats end here. The relay and desktop only ever
-    // see this stable Rebeam shape (serialized by Cmd/Event on the wire).
+    // see this stable Reshard shape (serialized by Cmd/Event on the wire).
     let _turn = AgentTurn {
         chat_id: chat.to_string(),
         agent_id: agent_id.to_string(),
@@ -1101,7 +1101,7 @@ fn truncate(s: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rebeam_core::{MemberKind, MessageKind, Presence};
+    use reshard_core::{MemberKind, MessageKind, Presence};
 
     fn member(id: &str, name: &str) -> Member {
         Member {
@@ -1328,7 +1328,7 @@ mod tests {
 
     #[test]
     fn a_session_lives_under_its_chat_and_survives_restart() {
-        let root = std::env::temp_dir().join(format!("rebeam-session-test-{}", Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("reshard-session-test-{}", Uuid::new_v4()));
         let path = session_path(&root, "g_warroom", "a_claude");
         assert_eq!(path, root.join("chats/g_warroom/a_claude.toml"));
 
@@ -1347,7 +1347,7 @@ mod tests {
 
     #[test]
     fn structured_gateway_log_is_jsonl_and_contains_no_prompt() {
-        let root = std::env::temp_dir().join(format!("rebeam-log-test-{}", Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("reshard-log-test-{}", Uuid::new_v4()));
         let session = session_path(&root, "g_test", "a_test");
         append_gateway_log(
             &session,

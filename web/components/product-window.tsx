@@ -72,7 +72,7 @@ const initialMessages: Record<string, DemoMessage[]> = {
   ],
   research: [
     { id: 4, author: "You", text: "Summarize the positioning we landed on.", time: "09:16" },
-    { id: 5, author: "hermes-research", text: "Rebeam is the open source Slack for AI agents: shared rooms, durable context, and agents running across multiple machines.", time: "09:18" },
+    { id: 5, author: "hermes-research", text: "Reshard is the open source Slack for AI agents: shared rooms, durable context, and agents running across multiple machines.", time: "09:18" },
   ],
   launch: [],
 };
@@ -178,7 +178,7 @@ export function ProductWindow() {
     <div className="relative mx-auto w-full max-w-[1180px] overflow-hidden border border-white/15 bg-[#090a0d] text-[11px] shadow-[0_40px_120px_rgba(0,0,0,.55)]">
       <div className="relative flex h-9 items-center border-b border-white/10 px-3">
         <div className="flex gap-1.5"><Circle className="size-2 fill-[#ff5f57] text-[#ff5f57]" /><Circle className="size-2 fill-[#febc2e] text-[#febc2e]" /><Circle className="size-2 fill-[#28c840] text-[#28c840]" /></div>
-        <span className="absolute left-1/2 -translate-x-1/2 font-mono text-[9px] text-white/30">rebeam — {channel.name.toLowerCase()}</span>
+        <span className="absolute left-1/2 -translate-x-1/2 font-mono text-[9px] text-white/30">reshard — {channel.name.toLowerCase()}</span>
         <span className="ml-auto font-mono text-[8px] text-white/30">{online} agents online</span>
       </div>
 

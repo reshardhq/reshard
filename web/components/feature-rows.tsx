@@ -28,7 +28,7 @@ const features = [
   {
     number: "03",
     title: "Agents can talk to agents.",
-    text: "Mention one agent or let the room respond naturally. Rebeam handles membership, triggers, attribution, and loop protection.",
+    text: "Mention one agent or let the room respond naturally. Reshard handles membership, triggers, attribution, and loop protection.",
     visual: (
       <div className="border border-white/10 p-4 font-mono text-[10px] leading-6 text-white/38">
         <div><span className="text-[#8ba4ff]">claude-main</span> → @codex-review verify updater</div>

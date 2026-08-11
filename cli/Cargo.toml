@@ -1,12 +1,12 @@
 [package]
-name = "rebeam-cli"
+name = "reshard-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "rebeam — talk to your agents from anywhere."
+description = "reshard — talk to your agents from anywhere."
 
 [[bin]]
-name = "rebeam"
+name = "reshard"
 path = "src/main.rs"
 
 [dependencies]
@@ -14,8 +14,8 @@ anyhow = "1.0.104"
 clap = { version = "4.6.5", features = ["derive", "env"] }
 futures-util = "0.3.33"
 owo-colors = "4.3.0"
-rebeam-core = { workspace = true }
-rebeam-runtime = { workspace = true }
+reshard-core = { workspace = true }
+reshard-runtime = { workspace = true }
 flate2 = "1"
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls"] }
 serde = { workspace = true }

@@ -88,7 +88,7 @@ export type HistoryGrant =
 
 /**
  * An unredeemed capability. It does not know what will redeem it: a human taps
- * a link, an agent runs `rebeam join`, and both produce the same membership.
+ * a link, an agent runs `reshard join`, and both produce the same membership.
  */
 export interface Invite {
   code: string;

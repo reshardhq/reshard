@@ -136,7 +136,7 @@ export function MessageText({
   );
 }
 
-const MENTION_SCHEME = "rebeam:mention/";
+const MENTION_SCHEME = "reshard:mention/";
 
 /** The name that means "you", for deciding which mentions light up. */
 function currentUserName(): string {

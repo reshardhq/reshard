@@ -223,7 +223,7 @@ mod schema_tests {
                 execution_locus: ExecutionLocus::LocalProcess,
             },
             launch: Some(LaunchCommand {
-                command: PathBuf::from("/opt/rebeam/claude-code-acp"),
+                command: PathBuf::from("/opt/reshard/claude-code-acp"),
                 args: vec!["--stdio".into()],
             }),
             diagnostics: vec![],

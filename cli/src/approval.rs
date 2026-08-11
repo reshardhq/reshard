@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
-use rebeam_core::{Approval, ApprovalDisplay, ApprovalState, Command, Event};
+use reshard_core::{Approval, ApprovalDisplay, ApprovalState, Command, Event};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 

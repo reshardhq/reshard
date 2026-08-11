@@ -1,0 +1,2 @@
+# shadcn/ui is vendored component code — exclude from language stats
+apps/desktop/src/components/ui/** linguist-vendored

@@ -1,7 +1,7 @@
 //! ACP provider conformance contract (Phase 6).
 //!
-//! Drives `rebeam-conformance-agent` through every stage rebeam's gateway
-//! depends on. Any ACP adapter rebeam trusts under the default Ask policy must
+//! Drives `reshard-conformance-agent` through every stage reshard's gateway
+//! depends on. Any ACP adapter reshard trusts under the default Ask policy must
 //! satisfy this same contract: initialize, session/new, streaming, tool
 //! telemetry, `session/request_permission`, cancellation, and crash recovery.
 
@@ -19,7 +19,7 @@ use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::{AcpAgent, Agent, Client, ConnectionTo};
 use tokio::sync::Mutex;
 
-const AGENT: &str = env!("CARGO_BIN_EXE_rebeam-conformance-agent");
+const AGENT: &str = env!("CARGO_BIN_EXE_reshard-conformance-agent");
 
 /// What the client observed the agent stream during a turn.
 #[derive(Default)]
@@ -123,7 +123,7 @@ async fn conformance_full_contract() {
             assert_eq!(run_rec.perms.load(Ordering::SeqCst), 1);
             assert_eq!(run_rec.text.lock().await.as_str(), "allowed");
 
-            // cancellation (rebeam's real model): the client abandons an
+            // cancellation (reshard's real model): the client abandons an
             // in-flight prompt and drops the connection, which terminates the
             // provider. We assert the prompt genuinely stays in-flight, the
             // cancel notification sends without error, and the path never hangs.

@@ -30,18 +30,18 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal
           rustup default stable
-      - name: Build Rebeam
-        run: cargo build --locked --release -p rebeam-cli
-      - name: Package Rebeam
+      - name: Build Reshard
+        run: cargo build --locked --release -p reshard-cli
+      - name: Package Reshard
         shell: bash
         run: |
           mkdir -p package
-          cp target/release/rebeam package/rebeam
-          tar -C package -czf "rebeam-${{ matrix.target }}.tar.gz" rebeam
+          cp target/release/reshard package/reshard
+          tar -C package -czf "reshard-${{ matrix.target }}.tar.gz" reshard
       - uses: actions/upload-artifact@v4
         with:
-          name: rebeam-${{ matrix.target }}
-          path: rebeam-${{ matrix.target }}.tar.gz
+          name: reshard-${{ matrix.target }}
+          path: reshard-${{ matrix.target }}.tar.gz
           if-no-files-found: error
 
   desktop:
@@ -66,15 +66,15 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build Rebeam desktop
+      - name: Build Reshard desktop
         run: pnpm --filter desktop tauri build --bundles dmg
       - name: Name desktop installer
         shell: bash
-        run: cp apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg "Rebeam-${{ matrix.target }}.dmg"
+        run: cp apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg "Reshard-${{ matrix.target }}.dmg"
       - uses: actions/upload-artifact@v4
         with:
-          name: Rebeam-${{ matrix.target }}
-          path: Rebeam-${{ matrix.target }}.dmg
+          name: Reshard-${{ matrix.target }}
+          path: Reshard-${{ matrix.target }}.dmg
           if-no-files-found: error
 
   release:
@@ -88,7 +88,7 @@ jobs:
           merge-multiple: true
       - name: Create checksums
         working-directory: dist
-        run: sha256sum rebeam-*.tar.gz > checksums.txt
+        run: sha256sum reshard-*.tar.gz > checksums.txt
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}

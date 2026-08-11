@@ -17,7 +17,7 @@ pub async fn run(requested: Option<&str>, repo: &str, check: bool) -> Result<boo
     validate_repo(repo)?;
     let target = release_target()?;
     let client = reqwest::Client::builder()
-        .user_agent(format!("rebeam/{}", env!("CARGO_PKG_VERSION")))
+        .user_agent(format!("reshard/{}", env!("CARGO_PKG_VERSION")))
         .build()?;
     let tag = match requested {
         Some(version) => normalize_version(version)?,
@@ -26,20 +26,20 @@ pub async fn run(requested: Option<&str>, repo: &str, check: bool) -> Result<boo
     let current = env!("CARGO_PKG_VERSION");
 
     if tag.trim_start_matches('v') == current {
-        println!("{} rebeam {current} is current", "✓".green());
+        println!("{} reshard {current} is current", "✓".green());
         return Ok(false);
     }
 
     if check {
         println!(
-            "{} rebeam {} is available (installed: {current})",
+            "{} reshard {} is available (installed: {current})",
             "↑".cyan(),
             tag.trim_start_matches('v')
         );
         return Ok(false);
     }
 
-    let artifact = format!("rebeam-{target}.tar.gz");
+    let artifact = format!("reshard-{target}.tar.gz");
     let base = format!("https://github.com/{repo}/releases/download/{tag}");
     let checksums = download_text(&client, &format!("{base}/checksums.txt")).await?;
     let expected = checksum_for(&checksums, &artifact)
@@ -54,15 +54,15 @@ pub async fn run(requested: Option<&str>, repo: &str, check: bool) -> Result<boo
     let decoder = GzDecoder::new(archive.as_slice());
     tar::Archive::new(decoder)
         .unpack(temp.path())
-        .context("extracting the Rebeam release")?;
-    let downloaded = temp.path().join("rebeam");
+        .context("extracting the Reshard release")?;
+    let downloaded = temp.path().join("reshard");
     if !downloaded.is_file() {
-        bail!("release archive does not contain the rebeam binary");
+        bail!("release archive does not contain the reshard binary");
     }
 
     replace_current_exe(&downloaded)?;
     println!(
-        "{} updated rebeam {current} → {}",
+        "{} updated reshard {current} → {}",
         "✓".green(),
         tag.trim_start_matches('v')
     );
@@ -141,7 +141,7 @@ fn release_target() -> Result<&'static str> {
         ("macos", "x86_64") => Ok("x86_64-apple-darwin"),
         ("linux", "aarch64") => Ok("aarch64-unknown-linux-gnu"),
         ("linux", "x86_64") => Ok("x86_64-unknown-linux-gnu"),
-        (os, arch) => bail!("Rebeam updates are not published for {os}/{arch}"),
+        (os, arch) => bail!("Reshard updates are not published for {os}/{arch}"),
     }
 }
 
@@ -159,11 +159,11 @@ fn checksum_for<'a>(document: &'a str, artifact: &str) -> Option<&'a str> {
 fn replace_current_exe(downloaded: &Path) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
 
-    let current = std::env::current_exe().context("locating the installed Rebeam binary")?;
+    let current = std::env::current_exe().context("locating the installed Reshard binary")?;
     let parent = current
         .parent()
-        .context("the installed Rebeam binary has no parent directory")?;
-    let candidate = parent.join(format!(".rebeam-update-{}", std::process::id()));
+        .context("the installed Reshard binary has no parent directory")?;
+    let candidate = parent.join(format!(".reshard-update-{}", std::process::id()));
     std::fs::copy(downloaded, &candidate)
         .with_context(|| format!("writing update beside {}", current.display()))?;
     std::fs::set_permissions(&candidate, std::fs::Permissions::from_mode(0o755))?;
@@ -184,7 +184,7 @@ struct TempDir(PathBuf);
 impl TempDir {
     fn new() -> Result<Self> {
         let path = std::env::temp_dir().join(format!(
-            "rebeam-update-{}-{}",
+            "reshard-update-{}-{}",
             std::process::id(),
             uuid::Uuid::new_v4()
         ));
@@ -211,22 +211,22 @@ mod tests {
     fn reads_gnu_and_bsd_checksum_lines() {
         let hash = "a".repeat(64);
         let document = format!(
-            "{hash}  rebeam-aarch64-apple-darwin.tar.gz\n{hash} *rebeam-x86_64-unknown-linux-gnu.tar.gz\n"
+            "{hash}  reshard-aarch64-apple-darwin.tar.gz\n{hash} *reshard-x86_64-unknown-linux-gnu.tar.gz\n"
         );
         assert_eq!(
-            checksum_for(&document, "rebeam-aarch64-apple-darwin.tar.gz"),
+            checksum_for(&document, "reshard-aarch64-apple-darwin.tar.gz"),
             Some(hash.as_str())
         );
         assert_eq!(
-            checksum_for(&document, "rebeam-x86_64-unknown-linux-gnu.tar.gz"),
+            checksum_for(&document, "reshard-x86_64-unknown-linux-gnu.tar.gz"),
             Some(hash.as_str())
         );
     }
 
     #[test]
     fn rejects_unsafe_release_inputs() {
-        assert!(validate_repo("T31K/rebeam").is_ok());
-        assert!(validate_repo("https://github.com/T31K/rebeam").is_err());
+        assert!(validate_repo("reshardhq/reshard").is_ok());
+        assert!(validate_repo("https://github.com/reshardhq/reshard").is_err());
         assert!(normalize_version("0.2.0").is_ok());
         assert!(normalize_version("../../main").is_err());
     }

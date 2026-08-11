@@ -1,9 +1,9 @@
 [package]
-name = "rebeam-runtime"
+name = "reshard-runtime"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Shared Rebeam agent runtime catalog and readiness probes."
+description = "Shared Reshard agent runtime catalog and readiness probes."
 
 [dependencies]
 agent-client-protocol = "2.0.0"

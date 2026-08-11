@@ -131,7 +131,7 @@ pub(crate) fn builtins() -> Vec<RuntimeDefinition> {
         AuthProbe::Command(vec!["auth", "status"]),
         AdapterRequirement::Executable {
             commands: vec!["claude-code-acp"],
-            install_hint: "Reinstall Rebeam so claude-code-acp is next to the rebeam binary.",
+            install_hint: "Reinstall Reshard so claude-code-acp is next to the reshard binary.",
         },
         &[],
         capabilities(false, true, true, true, true, true, true, 1),
@@ -148,7 +148,7 @@ pub(crate) fn builtins() -> Vec<RuntimeDefinition> {
         AdapterRequirement::Executable {
             commands: vec!["codex-acp"],
             install_hint:
-                "Install codex-acp explicitly; Rebeam will not run an installer during discovery.",
+                "Install codex-acp explicitly; Reshard will not run an installer during discovery.",
         },
         &[],
         capabilities(false, true, false, true, true, true, true, 4),

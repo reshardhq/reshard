@@ -1,4 +1,4 @@
-//! The rebeam protocol.
+//! The reshard protocol.
 //!
 //! Clients send [`Command`]s. The relay emits [`Event`]s. That is the entire
 //! contract — every client (desktop app, CLI, future mobile) is an adapter
@@ -300,7 +300,7 @@ pub enum Presence {
 // ---------------------------------------------------------------------------
 
 /// An unredeemed capability. It does not know what will redeem it: a human
-/// taps a link in the app, an agent runs `rebeam join`, and both produce the
+/// taps a link in the app, an agent runs `reshard join`, and both produce the
 /// same [`Membership`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

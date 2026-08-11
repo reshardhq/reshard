@@ -1,4 +1,4 @@
-//! Shared, data-driven discovery for agent runtimes used by both Rebeam CLI
+//! Shared, data-driven discovery for agent runtimes used by both Reshard CLI
 //! and the native desktop shell.
 
 mod catalog;
@@ -42,16 +42,16 @@ pub async fn discover_local(refresh: bool) -> Result<Vec<RuntimeReport>, String>
     .await)
 }
 
-pub fn rebeam_home() -> std::path::PathBuf {
-    if let Some(path) = std::env::var_os("REBEAM_HOME") {
+pub fn reshard_home() -> std::path::PathBuf {
+    if let Some(path) = std::env::var_os("RESHARD_HOME") {
         return path.into();
     }
     std::env::var_os("HOME")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join(".rebeam")
+        .join(".reshard")
 }
 
 pub fn runtime_catalog_path() -> std::path::PathBuf {
-    rebeam_home().join("runtimes.toml")
+    reshard_home().join("runtimes.toml")
 }

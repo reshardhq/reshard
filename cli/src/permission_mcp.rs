@@ -14,17 +14,17 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 use crate::approval::ApprovalBroker;
 
-const SERVER_NAME: &str = "rebeam_permissions";
+const SERVER_NAME: &str = "reshard_permissions";
 const TOOL_NAME: &str = "request";
 
 pub async fn run() -> Result<()> {
-    let relay = required_env("REBEAM_RELAY")?;
-    let token = required_env("REBEAM_MACHINE_TOKEN")?;
-    let agent = required_env("REBEAM_APPROVAL_AGENT")?;
-    let chat = required_env("REBEAM_APPROVAL_CHAT")?;
-    let provider = env::var("REBEAM_APPROVAL_PROVIDER").unwrap_or_else(|_| "claude".into());
-    let project = env::var("REBEAM_APPROVAL_PROJECT").ok();
-    let timeout = env::var("REBEAM_APPROVAL_TIMEOUT_MS")
+    let relay = required_env("RESHARD_RELAY")?;
+    let token = required_env("RESHARD_MACHINE_TOKEN")?;
+    let agent = required_env("RESHARD_APPROVAL_AGENT")?;
+    let chat = required_env("RESHARD_APPROVAL_CHAT")?;
+    let provider = env::var("RESHARD_APPROVAL_PROVIDER").unwrap_or_else(|_| "claude".into());
+    let project = env::var("RESHARD_APPROVAL_PROJECT").ok();
+    let timeout = env::var("RESHARD_APPROVAL_TIMEOUT_MS")
         .ok()
         .and_then(|value| value.parse::<u64>().ok())
         .map(Duration::from_millis)
@@ -73,7 +73,7 @@ pub async fn run() -> Result<()> {
                 "id": id,
                 "result": { "tools": [{
                     "name": TOOL_NAME,
-                    "description": "Ask the Rebeam owner before running one exact Claude tool call.",
+                    "description": "Ask the Reshard owner before running one exact Claude tool call.",
                     "inputSchema": {
                         "type": "object",
                         "properties": {
@@ -118,13 +118,13 @@ pub async fn run() -> Result<()> {
                         } else {
                             json!({
                                 "behavior": "deny",
-                                "message": "The Rebeam owner denied this action or the approval expired."
+                                "message": "The Reshard owner denied this action or the approval expired."
                             })
                         }
                     }
                     Err(error) => json!({
                         "behavior": "deny",
-                        "message": format!("Rebeam approval failed closed: {error:#}")
+                        "message": format!("Reshard approval failed closed: {error:#}")
                     }),
                 };
                 json!({

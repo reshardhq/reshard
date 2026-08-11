@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 use owo_colors::OwoColorize;
-use rebeam_runtime::{discover_local, Availability, RuntimeReport};
+use reshard_runtime::{discover_local, Availability, RuntimeReport};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Deserialize, Serialize)]
@@ -39,7 +39,7 @@ struct LegacyAgent {
 }
 
 pub fn migrate_legacy_config() -> Result<usize> {
-    let legacy = rebeam_home().join("rebeam.toml");
+    let legacy = reshard_home().join("reshard.toml");
     if !legacy.is_file() {
         return Ok(0);
     }
@@ -85,7 +85,7 @@ pub fn has_configuration() -> bool {
     supervisor_config_path().is_file()
 }
 
-/// Install the Claude subscription ACP sidecar into Rebeam's private runtime
+/// Install the Claude subscription ACP sidecar into Reshard's private runtime
 /// directory. This is intentionally a first-pass bootstrap using uv; the
 /// directory is a stable contract that can later hold a bundled/signed
 /// artifact without changing the CLI or ACP supervisor.
@@ -94,9 +94,9 @@ pub async fn install(id: &str) -> Result<()> {
         bail!("no managed installer exists for runtime {id:?}");
     }
     let uv = which("uv").context(
-        "installing Claude subscription support requires `uv`; install uv or use a bundled Rebeam runtime",
+        "installing Claude subscription support requires `uv`; install uv or use a bundled Reshard runtime",
     )?;
-    let runtime_dir = rebeam_home().join("runtimes/claude-subscription");
+    let runtime_dir = reshard_home().join("runtimes/claude-subscription");
     let venv = runtime_dir.join("venv");
     std::fs::create_dir_all(&runtime_dir)
         .with_context(|| format!("creating {}", runtime_dir.display()))?;
@@ -168,7 +168,7 @@ pub async fn runtimes(
 pub async fn doctor(id: &str, json: bool) -> Result<()> {
     let reports = discover_local(true).await.map_err(anyhow::Error::msg)?;
     let report = find_report(&reports, id)
-        .with_context(|| format!("unknown runtime {id:?}; run `rebeam runtimes`"))?;
+        .with_context(|| format!("unknown runtime {id:?}; run `reshard runtimes`"))?;
     if json {
         println!("{}", serde_json::to_string_pretty(report)?);
         return Ok(());
@@ -197,7 +197,7 @@ pub async fn enable(
 ) -> Result<()> {
     let reports = discover_local(true).await.map_err(anyhow::Error::msg)?;
     let report = find_report(&reports, id)
-        .with_context(|| format!("unknown runtime {id:?}; run `rebeam runtimes`"))?;
+        .with_context(|| format!("unknown runtime {id:?}; run `reshard runtimes`"))?;
     ensure_ready(report)?;
     let project = validate_project(project)?;
     validate_agent_name(name)?;
@@ -215,7 +215,7 @@ pub async fn enable(
         report.label.bold(),
         name.bold()
     );
-    println!("  permission policy: {}", "Ask in Rebeam".green());
+    println!("  permission policy: {}", "Ask in Reshard".green());
     println!("  The long-lived supervisor will activate this profile in Phase 5.");
     Ok(())
 }
@@ -227,7 +227,7 @@ pub async fn setup(
     project: Option<PathBuf>,
     agent_name: Option<String>,
 ) -> Result<()> {
-    println!("{}\n", "Rebeam setup".bold());
+    println!("{}\n", "Reshard setup".bold());
     let reports = discover_local(true).await.map_err(anyhow::Error::msg)?;
     print_reports(&reports);
 
@@ -249,7 +249,7 @@ pub async fn setup(
     };
     for id in &selected {
         let report = find_report(&reports, id)
-            .with_context(|| format!("unknown runtime {id:?}; run `rebeam runtimes`"))?;
+            .with_context(|| format!("unknown runtime {id:?}; run `reshard runtimes`"))?;
         ensure_ready(report)?;
         let project = match &shared_project {
             Some(path) => path.clone(),
@@ -274,7 +274,7 @@ pub async fn setup(
     let configured = configured_runtime_ids()?;
     upload_inventory(client, relay, &reports, &configured).await?;
     println!("\n{} runtime configuration saved", "✓".green());
-    println!("  Permission policy: {}", "Ask in Rebeam".green());
+    println!("  Permission policy: {}", "Ask in Reshard".green());
     println!(
         "  Automatic service startup remains disabled until the approval broker can enforce that policy."
     );
@@ -312,7 +312,7 @@ fn print_report(report: &RuntimeReport) {
     if report.binary_path.is_some()
         && !matches!(
             report.adapter,
-            rebeam_runtime::AdapterStatus::Missing | rebeam_runtime::AdapterStatus::Unsupported
+            reshard_runtime::AdapterStatus::Missing | reshard_runtime::AdapterStatus::Unsupported
         )
         && report.capabilities.enforceable_tool_approvals
     {
@@ -354,7 +354,7 @@ fn ensure_ready(report: &RuntimeReport) -> Result<()> {
         .map(|diagnostic| diagnostic.message.as_str())
         .unwrap_or("runtime is not ready");
     bail!(
-        "{} is not ready ({}): {hint}. Run `rebeam runtime doctor {}`.",
+        "{} is not ready ({}): {hint}. Run `reshard runtime doctor {}`.",
         report.label,
         availability_label(report.availability),
         report.id
@@ -500,12 +500,12 @@ async fn upload_inventory(
     }
 }
 
-fn rebeam_home() -> PathBuf {
-    rebeam_runtime::rebeam_home()
+fn reshard_home() -> PathBuf {
+    reshard_runtime::reshard_home()
 }
 
 fn supervisor_config_path() -> PathBuf {
-    rebeam_home().join("supervisor.toml")
+    reshard_home().join("supervisor.toml")
 }
 
 fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
@@ -555,7 +555,7 @@ mod tests {
     #[test]
     fn supervisor_profiles_are_atomic_and_replace_by_name() {
         let root = std::env::temp_dir().join(format!(
-            "rebeam-setup-test-{}",
+            "reshard-setup-test-{}",
             uuid::Uuid::new_v4().simple()
         ));
         let path = root.join("supervisor.toml");

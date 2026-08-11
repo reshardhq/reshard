@@ -1,19 +1,19 @@
 [package]
-name = "rebeam-server"
+name = "reshard-server"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "The rebeam relay."
+description = "The reshard relay."
 
 [[bin]]
-name = "rebeam-relay"
+name = "reshard-relay"
 path = "src/main.rs"
 
 [dependencies]
 argon2 = "0.5"
 axum = { version = "0.8.9", features = ["ws"] }
 futures-util = "0.3.33"
-rebeam-core = { workspace = true }
+reshard-core = { workspace = true }
 rand_core = { version = "0.6", features = ["getrandom"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 sha2 = "0.10.9"
