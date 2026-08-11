@@ -89,6 +89,7 @@ fn router(app_state: App) -> Router {
         .route("/health", get(health))
         .route("/auth/register", post(register))
         .route("/auth/login", post(login))
+        .route("/users", post(create_user))
         .route("/auth/refresh", post(refresh))
         .route("/auth/me", get(me))
         .route("/auth/logout", post(logout))
@@ -205,6 +206,42 @@ async fn register(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ClaimUserRequest {
+    username: String,
+    #[serde(default)]
+    display_name: String,
+}
+
+/// Claim a unique username (no password) — the MVP identity model. Returns a
+/// session token; the app persists it and seeds land in the Welcome chat.
+async fn create_user(
+    State(app): State<App>,
+    Json(body): Json<ClaimUserRequest>,
+) -> Result<impl IntoResponse, Fail> {
+    let username = body.username.trim().to_ascii_lowercase();
+    if !(3..=32).contains(&username.chars().count())
+        || !username
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    {
+        return Err(Fail::bad_request(
+            "username must be 3-32 characters: letters, numbers, _ or -".into(),
+        ));
+    }
+    if body.display_name.chars().count() > 64 {
+        return Err(Fail::bad_request("display name is too long".into()));
+    }
+    let store = app.store.clone();
+    let display = body.display_name;
+    let session = tokio::task::spawn_blocking(move || store.claim_username(&username, &display))
+        .await
+        .map_err(|_| Fail::internal("account worker stopped".into()))?
+        .map_err(auth_error)?;
+    Ok(Json(session))
+}
+
+#[derive(Deserialize)]
 struct LoginRequest {
     email: String,
     password: String,
@@ -269,6 +306,7 @@ fn validate_registration(body: &RegisterRequest) -> Result<(), Fail> {
 fn auth_error(error: AuthError) -> Fail {
     match error {
         AuthError::DuplicateEmail => Fail::conflict("an account already uses that email".into()),
+        AuthError::DuplicateUsername => Fail::conflict("that username is taken".into()),
         AuthError::InvalidCredentials => {
             Fail::unauthorized("email or password is incorrect".into())
         }

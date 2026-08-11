@@ -52,6 +52,7 @@ pub struct PairingCode {
 #[derive(Debug)]
 pub enum AuthError {
     DuplicateEmail,
+    DuplicateUsername,
     InvalidCredentials,
     RateLimited,
     Password,
@@ -193,6 +194,83 @@ impl Store {
         let session = Self::new_session(&tx, user)?;
         tx.commit()?;
         Ok(session)
+    }
+
+    /// Claim a unique username (no password) — the MVP identity model. Creates
+    /// the user + human member, seeds a Welcome chat so the app is never blank,
+    /// and returns a session token. `email`/`password_hash` are vestigial here.
+    pub fn claim_username(
+        &self,
+        username: &str,
+        display_name: &str,
+    ) -> Result<AuthSession, AuthError> {
+        let username = username.trim().to_ascii_lowercase();
+        let display = {
+            let trimmed = display_name.trim();
+            if trimmed.is_empty() {
+                username.clone()
+            } else {
+                trimmed.to_string()
+            }
+        };
+        let user = User {
+            id: format!("u_{}", uuid::Uuid::new_v4().simple()),
+            email: format!("{username}@handle.reshard"),
+            name: display,
+        };
+        let mut conn = self.conn.lock().unwrap();
+        let tx = conn.transaction()?;
+        if let Err(error) = tx.execute(
+            "INSERT INTO users (id, email, name, password_hash, username, created_at)
+             VALUES (?1, ?2, ?3, '', ?4, ?5)",
+            params![user.id, user.email, user.name, username, now_millis()],
+        ) {
+            if is_constraint(&error) {
+                return Err(AuthError::DuplicateUsername);
+            }
+            return Err(AuthError::Database(error));
+        }
+        Self::ensure_user_member(&tx, &user)?;
+        Self::seed_welcome_chat(&tx, &user)?;
+        let session = Self::new_session(&tx, user)?;
+        tx.commit()?;
+        Ok(session)
+    }
+
+    /// A brand-new account lands in a seeded Welcome chat.
+    fn seed_welcome_chat(conn: &Connection, user: &User) -> rusqlite::Result<()> {
+        const WELCOME_TEXT: &str = "👋 Welcome to Reshard. This is your space. Pair a machine to bring your agents in — then talk to Claude, Codex, or anything else right here.";
+        let now = now_millis();
+        let chat_id = format!("g_{}", &uuid::Uuid::new_v4().simple().to_string()[..8]);
+        let position: i64 = conn.query_row(
+            "SELECT COALESCE(MAX(position), 0) + 1 FROM chats",
+            [],
+            |r| r.get(0),
+        )?;
+        conn.execute(
+            "INSERT INTO chats (id, name, kind, topic, position)
+             VALUES (?1, 'Welcome', 'group', NULL, ?2)",
+            params![chat_id, position],
+        )?;
+        conn.execute(
+            "INSERT INTO chat_members
+               (chat_id, member_id, joined_at, history_floor_seq, cursor_seq, trigger)
+             VALUES (?1, ?2, ?3, 0, 0, 'all')",
+            params![chat_id, user.id, now],
+        )?;
+        conn.execute(
+            "INSERT INTO messages
+               (id, chat_id, author_id, seq, kind, text, options, resolved_option, created_at)
+             VALUES (?1, ?2, ?3, 1, 'message', ?4, NULL, NULL, ?5)",
+            params![
+                format!("m_{}", uuid::Uuid::new_v4().simple()),
+                chat_id,
+                user.id,
+                WELCOME_TEXT,
+                now
+            ],
+        )?;
+        Ok(())
     }
 
     pub fn login(&self, email: &str, password: &str) -> Result<AuthSession, AuthError> {
@@ -384,10 +462,15 @@ impl Store {
     }
 
     pub fn create_pairing(&self, workspace: &str) -> rusqlite::Result<PairingCode> {
-        let code = format!(
-            "RP-{}",
-            &uuid::Uuid::new_v4().simple().to_string()[..12].to_ascii_uppercase()
-        );
+        // 8 chars from the confusable-safe alphabet (no 0/O/1/I), shown in the
+        // app as XXXX-XXXX and easy to retype on a VPS. Stored without the
+        // separator; redemption normalizes the input.
+        let code: String = uuid::Uuid::new_v4()
+            .as_bytes()
+            .iter()
+            .take(8)
+            .map(|b| reshard_core::CODE_ALPHABET[(b & 0x1f) as usize] as char)
+            .collect();
         let conn = self.conn.lock().unwrap();
         conn.execute(
             "INSERT INTO pairings (code, workspace_id, expires_at) VALUES (?1, ?2, ?3)",
@@ -397,6 +480,14 @@ impl Store {
     }
 
     pub fn redeem_pairing(&self, code: &str) -> rusqlite::Result<Result<String, String>> {
+        // Accept the code with any case / separators (e.g. "abcd-efgh"). Unlike
+        // normalize_code, this does not strip an "RB" prefix (pairing codes are
+        // raw alphabet chars and may legitimately start with those letters).
+        let code: String = code
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .map(|c| c.to_ascii_uppercase())
+            .collect();
         let mut conn = self.conn.lock().unwrap();
         let tx = conn.transaction()?;
         let found: Option<(String, i64, Option<i64>)> = tx
@@ -2098,6 +2189,8 @@ const MIGRATIONS: &[&str] = &[
     "UPDATE machine_tokens SET id = 'machine_' || substr(token_hash, 1, 32) WHERE id IS NULL",
     "CREATE UNIQUE INDEX IF NOT EXISTS machine_tokens_id ON machine_tokens(id) WHERE id IS NOT NULL",
     "CREATE UNIQUE INDEX IF NOT EXISTS sessions_refresh ON sessions(refresh_token_hash) WHERE refresh_token_hash IS NOT NULL",
+    "ALTER TABLE users ADD COLUMN username TEXT",
+    "CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users(username)",
 ];
 
 const SCHEMA: &str = r#"
