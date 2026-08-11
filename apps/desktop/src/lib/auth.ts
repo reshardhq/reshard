@@ -202,6 +202,23 @@ export async function machineStatus(): Promise<MachineStatus> {
   return (await response.json()) as MachineStatus;
 }
 
+/** Invite an agent from the app: bind a runtime + directory on a machine to a chat. */
+export async function createAgent(input: {
+  name: string;
+  runtime: string;
+  machineId: string;
+  cwd?: string;
+  chatId: string;
+}) {
+  const response = await authorizedFetch(`${RELAY}/agents`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw new Error(await errorText(response));
+  return await response.json();
+}
+
 export async function approveDevice(userCode: string) {
   const response = await authorizedFetch(`${RELAY}/auth/device/approve`, {
     method: "POST",

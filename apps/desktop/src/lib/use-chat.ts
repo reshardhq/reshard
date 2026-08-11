@@ -13,7 +13,7 @@ import { MockStore } from "./mock-store";
 import { notifyApprovalRequested } from "./notify";
 import { LiveStore } from "./live-store";
 import * as auth from "./auth";
-import type { AuthUser } from "./auth";
+import type { AuthUser, Machine } from "./auth";
 
 /**
  * The app talks to one Store. Which one is a transport decision made once at
@@ -39,6 +39,7 @@ interface ChatState {
   user: AuthUser | null;
   machineCount: number;
   machineOnline: number;
+  machines: Machine[];
   /** text the command palette wants inserted into the composer */
   composerInsert: string | null;
   /** agents currently composing, per channel */
@@ -100,6 +101,7 @@ export const useChat = create<ChatState>((set, get) => ({
   user: null,
   machineCount: 0,
   machineOnline: 0,
+  machines: [],
   composerInsert: null,
   working: [],
   agentTouch: null,
@@ -117,6 +119,7 @@ export const useChat = create<ChatState>((set, get) => ({
       user,
       machineCount: machines.count,
       machineOnline: machines.online,
+      machines: machines.machines,
       authed: user != null,
       authReady: true,
     });
@@ -124,7 +127,7 @@ export const useChat = create<ChatState>((set, get) => ({
 
   async refreshMachines() {
     const machines = await auth.machineStatus().catch(() => ({ count: 0, online: 0, machines: [] }));
-    set({ machineCount: machines.count, machineOnline: machines.online });
+    set({ machineCount: machines.count, machineOnline: machines.online, machines: machines.machines });
   },
 
   async signIn(email, password) {
