@@ -16,7 +16,7 @@ import { TitleBar } from "@/components/title-bar";
 import { StatusBar } from "@/components/status-bar";
 import { CommandPalette } from "@/components/command-palette";
 import { useChat } from "@/lib/use-chat";
-import { AuthPage } from "@/components/auth-page";
+import { Onboarding } from "@/components/onboarding";
 
 function Shortcuts() {
   const { toggleSidebar } = useSidebar();
@@ -150,6 +150,10 @@ export default function App() {
     storedWidth("agentchat.rightWidth", 288),
   );
   const [resizing, setResizing] = useState(false);
+  // Decided once auth resolves: a fresh (not-signed-in) user onboards. Held
+  // locally so it survives the claim→authed transition — the identity itself is
+  // persisted in the Tauri session file, not localStorage.
+  const [onboarding, setOnboarding] = useState<boolean | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -175,6 +179,10 @@ export default function App() {
   }, [initAuth]);
 
   useEffect(() => {
+    if (authReady) setOnboarding((prev) => (prev === null ? !authed : prev));
+  }, [authReady, authed]);
+
+  useEffect(() => {
     if (authReady && authed) void init();
   }, [authReady, authed, init]);
 
@@ -192,8 +200,9 @@ export default function App() {
     return () => window.removeEventListener("contextmenu", onContextMenu);
   }, []);
 
-  if (!authReady) return <div className="h-svh bg-background" />;
-  if (!authed) return <AuthPage />;
+  if (!authReady || onboarding === null)
+    return <div className="h-svh bg-background" />;
+  if (onboarding) return <Onboarding onDone={() => setOnboarding(false)} />;
 
   return (
     <SidebarProvider

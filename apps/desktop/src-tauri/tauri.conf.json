@@ -13,6 +13,7 @@
     "windows": [
       {
         "title": "Reshard",
+        "backgroundColor": [10, 10, 10, 255],
         "width": 1180,
         "height": 760,
         "minWidth": 1040,

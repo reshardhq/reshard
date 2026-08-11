@@ -115,6 +115,11 @@ export async function register(name: string, email: string, password: string) {
   return (await authRequest("/auth/register", { name, email, password })).user;
 }
 
+/** Claim a unique username (no password) — the MVP identity model. */
+export async function claimUsername(username: string, displayName: string) {
+  return (await authRequest("/users", { username, displayName })).user;
+}
+
 async function refreshSession(): Promise<AuthSession | null> {
   const current = await loadSession();
   if (!current?.refreshToken) return null;

@@ -58,6 +58,7 @@ interface ChatState {
   refreshMachines(): Promise<void>;
   signIn(email: string, password: string): Promise<void>;
   register(name: string, email: string, password: string): Promise<void>;
+  claimUsername(username: string, displayName: string): Promise<void>;
   signOut(): Promise<void>;
   selectChannel(channelId: string): Promise<void>;
   send(text: string): Promise<void>;
@@ -133,6 +134,10 @@ export const useChat = create<ChatState>((set, get) => ({
 
   async register(name, email, password) {
     const user = await auth.register(name, email, password);
+    set({ user, authed: true });
+  },
+  async claimUsername(username, displayName) {
+    const user = await auth.claimUsername(username, displayName);
     set({ user, authed: true });
   },
 

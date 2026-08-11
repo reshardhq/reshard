@@ -9,6 +9,7 @@ import { useEffect, useRef } from "react";
  *   glow    — radial glow from the top center
  *   slope   — diagonal linear fade
  *   horizon — vertical fade rising from the composer
+ *   band    — full-width horizontal strip, densest at the vertical center
  *
  * `animate` breathes the field and shimmers dot color through
  * a subtle violet↔cyan drift. Honors prefers-reduced-motion.
@@ -25,7 +26,7 @@ const BAYER_8 = [
   [63, 31, 55, 23, 61, 29, 53, 21],
 ];
 
-type Variant = "glow" | "slope" | "horizon";
+type Variant = "glow" | "slope" | "horizon" | "band";
 
 function intensity(
   variant: Variant,
@@ -47,6 +48,11 @@ function intensity(
       return Math.max(0, 1 - (x / w + y / h) / 1.4 + Math.sin(t * 0.0003) * 0.03);
     case "horizon":
       return Math.max(0, (y / h - 0.45) * 1.6 + Math.sin(t * 0.0003) * 0.03);
+    case "band": {
+      const breathe = 1 + Math.sin(t * 0.00037) * 0.06;
+      // Peak at the vertical center, fade to top/bottom; uniform across width.
+      return Math.max(0, 1 - Math.abs(y / h - 0.5) * 2.6 * breathe);
+    }
   }
 }
 

@@ -346,7 +346,7 @@ a:hover .animated-underline,
     @apply bg-background text-foreground;
     }
   html {
-    @apply font-sans;
+    @apply font-sans bg-background;
     letter-spacing: -0.011em;
     /* global type scale: 16px -> 13.6px base */
     font-size: 85%;
