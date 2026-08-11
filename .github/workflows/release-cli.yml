@@ -44,42 +44,9 @@ jobs:
           path: reshard-${{ matrix.target }}.tar.gz
           if-no-files-found: error
 
-  desktop:
-    name: Build desktop ${{ matrix.target }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-15
-            target: aarch64-apple-darwin
-          - runner: macos-15-intel
-            target: x86_64-apple-darwin
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build Reshard desktop
-        run: pnpm --filter desktop tauri build --bundles dmg
-      - name: Name desktop installer
-        shell: bash
-        run: cp apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg "Reshard-${{ matrix.target }}.dmg"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Reshard-${{ matrix.target }}
-          path: Reshard-${{ matrix.target }}.dmg
-          if-no-files-found: error
-
   release:
     name: Publish GitHub release
-    needs: [build, desktop]
+    needs: [build]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v4
