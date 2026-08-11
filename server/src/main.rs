@@ -88,8 +88,10 @@ fn router(app_state: App) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/auth/register", post(register))
+        .route("/", get(root))
         .route("/auth/login", post(login))
         .route("/users", post(create_user))
+        .route("/agents", post(create_agent))
         .route("/auth/refresh", post(refresh))
         .route("/auth/me", get(me))
         .route("/auth/logout", post(logout))
@@ -103,6 +105,7 @@ fn router(app_state: App) -> Router {
         .route("/pair", post(pair))
         .route("/machines", get(machines))
         .route("/machines/runtimes", post(report_runtime_inventory))
+        .route("/machines/agents", get(machine_agents))
         .route("/machines/{id}", axum::routing::delete(revoke_machine))
         .route("/machines/heartbeat", post(heartbeat))
         .route("/chats", get(chats).post(create_chat))
@@ -734,6 +737,76 @@ async fn create_chat(
         chat.member_ids.push(agent.to_string());
     }
     Ok(Json(chat))
+}
+
+/// Root — a friendly 200 so `GET api.reshard.dev/` isn't a 404.
+async fn root() -> impl IntoResponse {
+    (axum::http::StatusCode::OK, "reshard relay")
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NewAgent {
+    name: String,
+    runtime: String,
+    machine_id: String,
+    #[serde(default)]
+    cwd: Option<String>,
+    chat_id: String,
+}
+
+/// Invite an agent from the app: create the agent, bind it to a machine +
+/// project directory, and add it to a chat. The machine's gateway pulls the
+/// binding and runs it there — no terminal round-trip.
+async fn create_agent(
+    State(app): State<App>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<NewAgent>,
+) -> Result<impl IntoResponse, Fail> {
+    let user = user_authenticated(&app, &headers)?;
+    if body.name.trim().is_empty() {
+        return Err(Fail::bad_request("an agent needs a name".into()));
+    }
+    if body.runtime.trim().is_empty() {
+        return Err(Fail::bad_request("an agent needs a runtime".into()));
+    }
+    let now = now_millis();
+    let member = app
+        .store
+        .create_agent_binding(
+            &user.id,
+            body.name.trim(),
+            body.runtime.trim(),
+            body.machine_id.trim(),
+            body.cwd.as_deref().map(str::trim).filter(|s| !s.is_empty()),
+            &body.chat_id,
+            now,
+        )?
+        .ok_or_else(|| Fail::bad_request("could not add that agent to the chat".into()))?;
+    let system = app.store.append(new_message(
+        &app,
+        &body.chat_id,
+        &user.id,
+        MessageKind::System,
+        format!("added **{}**", member.name),
+        None,
+    )?)?;
+    let _ = app.events.send(Event::Message { message: system });
+    Ok(Json(member))
+}
+
+/// The gateway pulls its machine's agent bindings (authenticated by its own
+/// machine credential) and runs each one.
+async fn machine_agents(
+    State(app): State<App>,
+    headers: axum::http::HeaderMap,
+) -> Result<impl IntoResponse, Fail> {
+    let token = bearer_token(&headers)?;
+    let machine = app
+        .store
+        .machine_for_credential(token)?
+        .ok_or_else(|| Fail::unauthorized("unknown machine credential".into()))?;
+    Ok(Json(app.store.bindings_for_machine(&machine.id)?))
 }
 
 #[derive(Deserialize)]

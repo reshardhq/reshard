@@ -49,6 +49,19 @@ pub struct PairingCode {
     pub code: String,
 }
 
+/// An agent bound to a machine + project directory, joined to a chat. The
+/// machine's gateway pulls these and runs each agent with its `cwd`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentBinding {
+    pub id: String,
+    pub agent_id: String,
+    pub name: String,
+    pub runtime: String,
+    pub cwd: Option<String>,
+    pub chat_id: String,
+}
+
 #[derive(Debug)]
 pub enum AuthError {
     DuplicateEmail,
@@ -1664,6 +1677,66 @@ impl Store {
         })
     }
 
+    /// Create an agent bound to a machine + project directory and add it to the
+    /// chat. Returns `None` if the chat could not accept the agent. The machine's
+    /// gateway pulls the binding (see `bindings_for_machine`) and runs it there.
+    pub fn create_agent_binding(
+        &self,
+        owner_id: &str,
+        name: &str,
+        runtime: &str,
+        machine_id: &str,
+        cwd: Option<&str>,
+        chat_id: &str,
+        now: i64,
+    ) -> rusqlite::Result<Option<Member>> {
+        let member = self.upsert_agent(name, owner_id, None)?;
+        if self
+            .attach_owned_agent(chat_id, &member.id, owner_id, now)?
+            .is_none()
+        {
+            return Ok(None);
+        }
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO agent_bindings
+               (id, owner_id, machine_id, agent_id, chat_id, name, runtime, cwd, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![
+                format!("ab_{}", uuid::Uuid::new_v4().simple()),
+                owner_id,
+                machine_id,
+                member.id,
+                chat_id,
+                member.name,
+                runtime,
+                cwd,
+                now
+            ],
+        )?;
+        Ok(Some(member))
+    }
+
+    /// Every agent binding a given machine's gateway should be running.
+    pub fn bindings_for_machine(&self, machine_id: &str) -> rusqlite::Result<Vec<AgentBinding>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, agent_id, name, runtime, cwd, chat_id
+             FROM agent_bindings WHERE machine_id = ?1 ORDER BY created_at",
+        )?;
+        let rows = stmt.query_map(params![machine_id], |r| {
+            Ok(AgentBinding {
+                id: r.get(0)?,
+                agent_id: r.get(1)?,
+                name: r.get(2)?,
+                runtime: r.get(3)?,
+                cwd: r.get(4)?,
+                chat_id: r.get(5)?,
+            })
+        })?;
+        rows.collect()
+    }
+
     // -- invites -----------------------------------------------------------
 
     pub fn create_invite(
@@ -2191,6 +2264,8 @@ const MIGRATIONS: &[&str] = &[
     "CREATE UNIQUE INDEX IF NOT EXISTS sessions_refresh ON sessions(refresh_token_hash) WHERE refresh_token_hash IS NOT NULL",
     "ALTER TABLE users ADD COLUMN username TEXT",
     "CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users(username)",
+    "CREATE TABLE IF NOT EXISTS agent_bindings (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, machine_id TEXT NOT NULL, agent_id TEXT NOT NULL, chat_id TEXT NOT NULL, name TEXT NOT NULL, runtime TEXT NOT NULL, cwd TEXT, created_at INTEGER NOT NULL)",
+    "CREATE INDEX IF NOT EXISTS agent_bindings_machine ON agent_bindings(machine_id)",
 ];
 
 const SCHEMA: &str = r#"
