@@ -1,0 +1,18 @@
+node_modules/
+dist/
+target/
+.DS_Store
+
+# Local Rebeam state and credentials
+.rebeam/
+.hermes/
+rebeam.toml
+machine-token
+*.db
+*.db-shm
+*.db-wal
+
+# Local environment files
+.env
+.env.*
+!.env.example

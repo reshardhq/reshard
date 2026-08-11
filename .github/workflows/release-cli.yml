@@ -1,0 +1,95 @@
+name: Release CLI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - name: Build Rebeam
+        run: cargo build --locked --release -p rebeam-cli
+      - name: Package Rebeam
+        shell: bash
+        run: |
+          mkdir -p package
+          cp target/release/rebeam package/rebeam
+          tar -C package -czf "rebeam-${{ matrix.target }}.tar.gz" rebeam
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rebeam-${{ matrix.target }}
+          path: rebeam-${{ matrix.target }}.tar.gz
+          if-no-files-found: error
+
+  desktop:
+    name: Build desktop ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build Rebeam desktop
+        run: pnpm --filter desktop tauri build --bundles dmg
+      - name: Name desktop installer
+        shell: bash
+        run: cp apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg "Rebeam-${{ matrix.target }}.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Rebeam-${{ matrix.target }}
+          path: Rebeam-${{ matrix.target }}.dmg
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    needs: [build, desktop]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create checksums
+        working-directory: dist
+        run: sha256sum rebeam-*.tar.gz > checksums.txt
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --generate-notes --verify-tag

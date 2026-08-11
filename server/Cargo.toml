@@ -1,0 +1,27 @@
+[package]
+name = "rebeam-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The rebeam relay."
+
+[[bin]]
+name = "rebeam-relay"
+path = "src/main.rs"
+
+[dependencies]
+argon2 = "0.5"
+axum = { version = "0.8.9", features = ["ws"] }
+futures-util = "0.3.33"
+rebeam-core = { workspace = true }
+rand_core = { version = "0.6", features = ["getrandom"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+sha2 = "0.10.9"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "time"] }
+tower-http = { version = "0.7.0", features = ["cors"] }
+uuid = { version = "1.24.0", features = ["v4"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

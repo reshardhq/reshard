@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@source "../**/*.{ts,tsx}";
+
+:root {
+  --background: #08090b;
+  --foreground: #f7f7f5;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; background: var(--background); }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: "Archivo Variable", sans-serif; }
+button, a { -webkit-tap-highlight-color: transparent; }
+code, .font-mono { font-family: "IBM Plex Mono", monospace; }
+::selection { background: #8ba4ff; color: #08090b; }
+
+.hatch {
+  background-image: repeating-linear-gradient(-45deg, rgba(255,255,255,.06) 0, rgba(255,255,255,.06) 1px, transparent 1px, transparent 8px);
+}
+
+.corner {
+  position: absolute;
+  z-index: 20;
+  width: 14px;
+  height: 14px;
+  border-color: #8ba4ff;
+  pointer-events: none;
+}
+
+.ascii-signal {
+  animation: signal-drift 7s ease-in-out infinite;
+  mask-image: linear-gradient(90deg, transparent, black 18%, black 82%, transparent);
+}
+
+@keyframes signal-drift {
+  0%, 100% { opacity: .58; transform: translateY(0); }
+  50% { opacity: .85; transform: translateY(-5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

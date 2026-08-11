@@ -1,0 +1,18 @@
+[package]
+name = "rebeam-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared Rebeam agent runtime catalog and readiness probes."
+
+[dependencies]
+agent-client-protocol = "2.0.0"
+futures-util = "0.3.33"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1.53.1", features = ["io-util", "macros", "process", "rt", "sync", "time"] }
+toml = "1.1.4"
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
+uuid = { version = "1.24.0", features = ["v4"] }

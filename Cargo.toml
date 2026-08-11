@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["core", "runtime", "server", "cli"]
+# the Tauri shell is its own standalone crate
+exclude = ["apps/desktop/src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "FSL-1.1-Apache-2.0"
+
+[workspace.dependencies]
+rebeam-core = { path = "core" }
+rebeam-runtime = { path = "runtime" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
