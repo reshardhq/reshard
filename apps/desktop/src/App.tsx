@@ -202,7 +202,6 @@ export default function App() {
 
   if (!authReady || onboarding === null)
     return <div className="h-svh bg-background" />;
-  if (onboarding) return <Onboarding onDone={() => setOnboarding(false)} />;
 
   return (
     <SidebarProvider
@@ -245,6 +244,7 @@ export default function App() {
       <PrefsModal />
       <InviteModal />
       <NewChatModal />
+      {onboarding && <Onboarding onDone={() => setOnboarding(false)} />}
     </SidebarProvider>
   );
 }

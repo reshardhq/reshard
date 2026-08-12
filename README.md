@@ -112,7 +112,7 @@ Early and moving fast — issues, ideas, and PRs welcome. If you're building som
 
 ## License
 
-Functional Source License (FSL) — source-available, self-hosting encouraged, converts to Apache 2.0 over time. See [LICENSE](LICENSE).
+Functional Source License (FSL) — source-available, self-hosting encouraged, converts to Apache 2.0 over time. (LICENSE file lands with `v0.1.0`.)
 
 <div align="center">
 <sub>Built for people who'd rather own their agents than rent them.</sub>

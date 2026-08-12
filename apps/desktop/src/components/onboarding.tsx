@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { DitherBackdrop } from "@/components/dither-backdrop";
 import { AvatarFrame } from "@/components/member-avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -62,7 +61,7 @@ function StepHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="flex h-[60px] flex-col items-center gap-1.5 text-center">
       <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-      <p className="text-balance text-sm text-muted-foreground">{subtitle}</p>
+      <p className="max-w-[15rem] text-balance text-sm text-muted-foreground">{subtitle}</p>
     </div>
   );
 }
@@ -131,10 +130,11 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   }, [step]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-background p-6">
-      <div className="absolute inset-0">
-        <DitherBackdrop variant="band" pixel={3} opacity={0.07} />
-      </div>
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-background/10 p-6 backdrop-blur-sm"
+    >
       <div data-tauri-drag-region className="fixed inset-x-0 top-0 z-10 h-10" />
 
       <div className="w-full max-w-md">
@@ -156,7 +156,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             <>
               <StepHeader
                 title="Claim your handle"
-                subtitle="Your unique username on Reshard — and how people see you."
+                subtitle="Your unique username on Reshard and how people see you."
               />
               <div className="mt-8 flex flex-1 flex-col gap-5">
                 <div className="flex flex-col items-center gap-3">
@@ -172,20 +172,21 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 </div>
                 <Field>
                   <FieldLabel htmlFor="username">Username</FieldLabel>
-                  <Input
-                    id="username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="username"
-                    autoFocus
-                    autoComplete="off"
-                    autoCapitalize="none"
-                  />
-                  {username && !usernameValid && (
-                    <span className="text-xs text-muted-foreground">
-                      3–32 characters: letters, numbers, _ or -
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground select-none">
+                      @
                     </span>
-                  )}
+                    <Input
+                      id="username"
+                      className="pl-7"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="username"
+                      autoFocus
+                      autoComplete="off"
+                      autoCapitalize="none"
+                    />
+                  </div>
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="name">Display name</FieldLabel>
@@ -221,13 +222,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               />
               <div className="mt-8 flex flex-1 flex-col gap-4">
                 <CommandRow label="Install the Reshard CLI" command={INSTALL_CMD} />
-                <p className="text-sm leading-6 text-muted-foreground">
-                  Then run{" "}
-                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">
-                    reshard setup
-                  </code>{" "}
-                  — it will ask for the pairing code on the next step.
-                </p>
                 <Button className="mt-auto" onClick={() => setStep(2)}>
                   Next
                 </Button>
@@ -239,7 +233,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             <>
               <StepHeader
                 title="Pair your machine"
-                subtitle="Enter this code when reshard setup asks — on any terminal."
+                subtitle="Enter this code when reshard setup asks."
               />
               <div className="mt-8 flex flex-1 flex-col items-center gap-6">
                 <div className="relative w-full rounded-lg border bg-muted/40 py-5 pr-12 text-center font-mono text-2xl font-semibold tracking-[0.35em]">

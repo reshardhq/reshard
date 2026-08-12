@@ -7,6 +7,7 @@ target/
 .reshard/
 .hermes/
 reshard.toml
+rebeam.toml
 machine-token
 *.db
 *.db-shm
